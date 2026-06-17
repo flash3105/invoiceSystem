@@ -1,76 +1,15 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using InvoiceSystem.Services;
-using InvoiceSystem.Helpers;
-using Microsoft.OpenApi.Models;
-using dotenv.net;
-
-// Load .env file
-DotEnv.Load(options: new DotEnvOptions(envFilePaths: new[] { ".env" }));
-
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Enter 'Bearer' [space] and then your token"
-    });
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
-    });
-});
+builder.Services.AddSwaggerGen();
 
-// Register services
-builder.Services.AddScoped<AuthService>();
 
-// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",
         builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
-
-// JWT Authentication - Get from environment variable
-var secretKey = Environment.GetEnvironmentVariable("SUPABASE_JWT_SECRET") 
-    ?? throw new Exception("SUPABASE_JWT_SECRET environment variable not configured");
-
-var key = Encoding.UTF8.GetBytes(secretKey);
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "InvoiceSystem",
-            ValidateAudience = true,
-            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "InvoiceSystemClient",
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(key),
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero
-        };
-    });
 
 var app = builder.Build();
 
@@ -82,7 +21,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
-app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
