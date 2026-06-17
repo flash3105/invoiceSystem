@@ -1,92 +1,9 @@
-# ================================
-# .NET / Backend
-# ================================
+# In root folder - .gitignore
 backend/bin/
 backend/obj/
-backend/*.user
-backend/*.suo
-backend/*.userosscache
-backend/TestResults/
-backend/packages/
-backend/*.nupkg
-backend/artifacts/
-backend/publish/
-backend/out/
-backend/*.pid
-backend/*.seed
-backend/*.pid.lock
-backend/appsettings.Production.json
-backend/appsettings.*.json
-
-# ================================
-# Frontend / Node
-# ================================
 frontend/node_modules/
 frontend/dist/
-frontend/build/
-frontend/.vite/
-frontend/*.log
-frontend/*.pid
-frontend/*.seed
-frontend/*.pid.lock
-frontend/.env.local
-frontend/.env.*.local
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
-frontend/coverage/
-frontend/.nyc_output/
-
-# ================================
-# Environment Variables (SECRETS!)
-# ================================
-.env
-.env.*
-*.env
-*.env.*
-!.env.example
-
-# ================================
-# IDE / Editor
-# ================================
 .vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-*.tmp
-*.temp
-*.cache
-*.suo
 *.user
-*.userosscache
-.vs/
-
-# ================================
-# OS Generated
-# ================================
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-Desktop.ini
-
-# ================================
-# Misc
-# ================================
-*.log
-*.pid
-*.seed
-*.pid.lock
-*.pdb
-*.dll
-*.exe
-*.zip
-*.tar
-*.gz
-*.7z
+*.suo
+.env
