@@ -6,7 +6,6 @@ backend/obj/
 backend/*.user
 backend/*.suo
 backend/*.userosscache
-backend/*.sln.docstates
 backend/TestResults/
 backend/packages/
 backend/*.nupkg
@@ -63,7 +62,6 @@ Thumbs.db
 *.suo
 *.user
 *.userosscache
-*.sln.docstates
 .vs/
 
 # ================================
