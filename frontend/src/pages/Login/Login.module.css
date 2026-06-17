@@ -1,0 +1,514 @@
+/* src/pages/Login/Login.module.css */
+.loginPage {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 16px;
+  position: relative;
+}
+
+.loginContainer {
+  max-width: 440px;
+  width: 100%;
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  padding: 48px 40px;
+}
+
+/* Logo */
+.logoWrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 32px;
+}
+
+.logo {
+  max-width: 120px;
+  max-height: 60px;
+  object-fit: contain;
+}
+
+/* Login Form */
+.loginFormContainer {
+  width: 100%;
+}
+
+.loginFormHeader {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.loginFormHeader h2 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 8px;
+}
+
+.loginFormHeader p {
+  color: #718096;
+  font-size: 15px;
+}
+
+.loginErrorAlert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.alertIcon {
+  width: 20px;
+  height: 20px;
+  color: #dc2626;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.loginErrorAlert span {
+  color: #991b1b;
+  font-size: 14px;
+}
+
+.loginForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formGroup label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 14px;
+  width: 20px;
+  height: 20px;
+  color: #9ca3af;
+}
+
+.inputWrapper input {
+  width: 100%;
+  padding: 12px 12px 12px 44px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 15px;
+  transition: all 0.2s;
+  background: #fafbfc;
+  outline: none;
+  -webkit-appearance: none; /* Remove default iOS styling */
+}
+
+.inputWrapper input:focus {
+  border-color: #2563eb;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Fix for iOS input zoom */
+.inputWrapper input {
+  font-size: 16px; /* Prevents iOS zoom on focus */
+}
+
+.passwordToggle {
+  position: absolute;
+  right: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation; /* Better touch handling */
+}
+
+.passwordToggle:hover {
+  color: #4b5563;
+}
+
+.loginOptions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rememberMe {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #4b5563;
+  touch-action: manipulation;
+}
+
+.rememberMe input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.forgotPassword {
+  text-decoration: none;
+  font-weight: 500;
+  color: #2563eb;
+  touch-action: manipulation;
+}
+
+.forgotPassword:hover {
+  text-decoration: underline;
+}
+
+.loginButton {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: #1e293b;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 4px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+}
+
+.loginButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px rgba(30, 41, 59, 0.25);
+  background: #0f172a;
+}
+
+.loginButton:active:not(:disabled) {
+  transform: scale(0.98); /* Press feedback on mobile */
+}
+
+.loginButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.loadingSpinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Login Footer */
+.loginFooter {
+  position: absolute;
+  bottom: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: #9ca3af;
+  padding: 0 16px;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+
+/* Small phones (iPhone SE, etc.) */
+@media (max-width: 380px) {
+  .loginContainer {
+    padding: 24px 16px;
+    border-radius: 16px;
+  }
+
+  .loginFormHeader h2 {
+    font-size: 22px;
+  }
+
+  .loginFormHeader p {
+    font-size: 14px;
+  }
+
+  .loginFormHeader {
+    margin-bottom: 24px;
+  }
+
+  .logo {
+    max-width: 80px;
+    max-height: 40px;
+  }
+
+  .logoWrapper {
+    margin-bottom: 24px;
+  }
+
+  .inputWrapper input {
+    padding: 10px 10px 10px 40px;
+    font-size: 14px;
+  }
+
+  .inputIcon {
+    left: 12px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .loginButton {
+    padding: 12px;
+    font-size: 15px;
+  }
+
+  .loginOptions {
+    font-size: 13px;
+  }
+}
+
+/* Standard phones (iPhone 6/7/8, Android) */
+@media (max-width: 480px) {
+  .loginContainer {
+    padding: 32px 24px;
+    border-radius: 20px;
+  }
+
+  .loginFormHeader h2 {
+    font-size: 24px;
+  }
+
+  .logo {
+    max-width: 100px;
+    max-height: 50px;
+  }
+}
+
+/* Larger phones (iPhone 12/13/14 Pro, Plus models) */
+@media (min-width: 481px) and (max-width: 768px) {
+  .loginContainer {
+    padding: 30px 32px;
+    max-width: 360px;
+  }
+}
+
+/* Tablets (iPad, etc.) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .loginContainer {
+    max-width: 420px;
+  }
+}
+
+/* Landscape mode for phones */
+@media (max-height: 600px) and (orientation: landscape) {
+  .loginPage {
+    padding: 12px;
+  }
+
+  .loginContainer {
+    padding: 24px 32px;
+    border-radius: 16px;
+    max-width: 400px;
+  }
+
+  .logoWrapper {
+    margin-bottom: 16px;
+  }
+
+  .logo {
+    max-width: 60px;
+    max-height: 30px;
+  }
+
+  .loginFormHeader {
+    margin-bottom: 16px;
+  }
+
+  .loginFormHeader h2 {
+    font-size: 20px;
+  }
+
+  .loginFormHeader p {
+    font-size: 13px;
+  }
+
+  .loginForm {
+    gap: 12px;
+  }
+
+  .formGroup {
+    gap: 4px;
+  }
+
+  .inputWrapper input {
+    padding: 8px 8px 8px 36px;
+    font-size: 14px;
+  }
+
+  .loginButton {
+    padding: 10px;
+    font-size: 14px;
+    margin-top: 0;
+  }
+
+  .loginOptions {
+    font-size: 12px;
+  }
+
+  .loginFooter {
+    display: none; /* Hide footer on small landscape screens */
+  }
+}
+
+/* High DPI / Retina screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .inputWrapper input {
+    border-width: 1.5px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .loginPage {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  }
+
+  .loginContainer {
+    background: #1e293b;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  .loginFormHeader h2 {
+    color: #f1f5f9;
+  }
+
+  .loginFormHeader p {
+    color: #94a3b8;
+  }
+
+  .formGroup label {
+    color: #cbd5e1;
+  }
+
+  .inputWrapper input {
+    background: #0f172a;
+    border-color: #334155;
+    color: #f1f5f9;
+  }
+
+  .inputWrapper input:focus {
+    border-color: #3b82f6;
+    background: #1e293b;
+  }
+
+  .inputIcon {
+    color: #64748b;
+  }
+
+  .passwordToggle {
+    color: #64748b;
+  }
+
+  .passwordToggle:hover {
+    color: #94a3b8;
+  }
+
+  .rememberMe {
+    color: #94a3b8;
+  }
+
+  .forgotPassword {
+    color: #60a5fa;
+  }
+
+  .loginButton {
+    background: #3b82f6;
+  }
+
+  .loginButton:hover:not(:disabled) {
+    background: #2563eb;
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+  }
+
+  .loginErrorAlert {
+    background: #450a0a;
+    border-color: #7f1d1d;
+  }
+
+  .loginErrorAlert span {
+    color: #fca5a5;
+  }
+
+  .loginFooter {
+    color: #64748b;
+  }
+
+  .spinner {
+    border-color: rgba(255, 255, 255, 0.2);
+    border-top-color: white;
+  }
+}
+
+/* Accessibility - Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 0.01ms !important;
+  }
+
+  .loginButton {
+    transition: none !important;
+  }
+
+  .loginButton:hover:not(:disabled) {
+    transform: none !important;
+  }
+
+  .loginButton:active:not(:disabled) {
+    transform: none !important;
+  }
+}
+
+/* Accessibility - High contrast */
+@media (prefers-contrast: high) {
+  .inputWrapper input {
+    border-width: 2px;
+  }
+
+  .loginButton {
+    border: 2px solid white;
+  }
+}
