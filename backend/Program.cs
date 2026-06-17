@@ -55,9 +55,6 @@ builder.Services.AddCors(options =>
 var secretKey = Environment.GetEnvironmentVariable("SUPABASE_JWT_SECRET") 
     ?? throw new Exception("SUPABASE_JWT_SECRET environment variable not configured");
 
-// Debug: Log the secret (remove after testing)
-Console.WriteLine($"JWT Secret loaded: {secretKey.Substring(0, 20)}...");
-
 var key = Encoding.UTF8.GetBytes(secretKey);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
