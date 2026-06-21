@@ -1,20 +1,43 @@
 // src/Components/InvoiceGenerator.tsx
 import React, { useState, useEffect } from 'react';
-import { Send, Download, Mail, Phone, FileText, User, Calendar, DollarSign, Hash } from 'lucide-react';
-//import { invoiceService, CreateInvoiceData } from '../services/invoice.service';
-//import { clientService, Client } from '../services/client.service';
+import { Send, Download, Mail, Phone, FileText, User, Calendar, DollarSign, Hash, AlertCircle, Plus, X } from 'lucide-react';
 import styles from './InvoiceGenerator.module.css';
 
-// Basic form data interface - extend as needed
+// API base URL
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+// Types
+interface Client {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  address?: string;
+  idNumber?: string;
+  passportNumber?: string;
+  notes?: string;
+  isActive: boolean;
+}
+
 interface InvoiceFormData {
   clientId: string;
   serviceDate: string;
   dueDate: string;
   procedureType: string;
   procedureCode: string;
-  duration: number;
-  ratePerHour: number;
-  notes: string;
+  amount: number;
+  notes?: string;
+}
+
+interface NewClientData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  address: string;
+  idNumber: string;
+  passportNumber: string;
 }
 
 export const InvoiceGenerator: React.FC = () => {
@@ -24,22 +47,32 @@ export const InvoiceGenerator: React.FC = () => {
     dueDate: '',
     procedureType: '',
     procedureCode: '',
-    duration: 0,
-    ratePerHour: 0,
+    amount: 0,
     notes: '',
   });
+  
+  const [clients, setClients] = useState<Client[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
- // const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [showNewClient, setShowNewClient] = useState(false);
-  const [newClient, setNewClient] = useState({
+  const [isSavingClient, setIsSavingClient] = useState(false);
+  
+  const [newClient, setNewClient] = useState<NewClientData>({
     firstName: '',
     lastName: '',
     email: '',
-    phone: '',
+    phoneNumber: '',
     address: '',
+    idNumber: '',
+    passportNumber: '',
   });
+
+  // Get auth token from storage
+  const getAuthToken = () => {
+    return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+  };
 
   // Fetch clients on mount
   useEffect(() => {
@@ -49,8 +82,29 @@ export const InvoiceGenerator: React.FC = () => {
   const loadClients = async () => {
     try {
       setLoading(true);
-      // const data = await clientService.getClients();
-      // setClients(data);
+      const token = getAuthToken();
+      
+      if (!token) {
+        setError('Please login to continue');
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/clients`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Session expired. Please login again.');
+        }
+        throw new Error('Failed to load clients');
+      }
+
+      const data = await response.json();
+      setClients(data);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load clients');
@@ -63,7 +117,7 @@ export const InvoiceGenerator: React.FC = () => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'duration' || name === 'ratePerHour' ? parseFloat(value) || 0 : value,
+      [name]: name === 'amount' ? parseFloat(value) || 0 : value,
     }));
   };
 
@@ -72,51 +126,160 @@ export const InvoiceGenerator: React.FC = () => {
     setNewClient(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAddClient = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddClient = async () => {
+    console.log('=== handleAddClient called ===');
+    console.log('New client data:', newClient);
+    
+    // Validate required fields
+    if (!newClient.firstName || !newClient.lastName || !newClient.email || !newClient.phoneNumber) {
+      console.log('Validation failed: Missing required fields');
+      setError('First name, last name, email, and phone number are required');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newClient.email)) {
+      console.log('Validation failed: Invalid email');
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    setIsSavingClient(true);
+    setError(null);
+
     try {
-      // await clientService.createClient(newClient);
+      const token = getAuthToken();
+      console.log('Auth token:', token ? 'Present' : 'Missing');
+      
+      if (!token) {
+        setError('Please login to continue');
+        setIsSavingClient(false);
+        return;
+      }
+
+      console.log('Sending POST request to:', `${API_URL}/api/clients`);
+      console.log('Request body:', JSON.stringify(newClient, null, 2));
+
+      const response = await fetch(`${API_URL}/api/clients`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newClient),
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
+      const data = await response.json();
+      console.log('Response data:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || data.details || 'Failed to create client');
+      }
+
+      console.log('Client created successfully!');
+
+      // Close new client form and refresh client list
       setShowNewClient(false);
       setNewClient({
         firstName: '',
         lastName: '',
         email: '',
-        phone: '',
+        phoneNumber: '',
         address: '',
+        idNumber: '',
+        passportNumber: '',
       });
-      loadClients();
+      
+      await loadClients();
+      setSuccess('Client created successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+      
     } catch (err) {
+      console.error('Error creating client:', err);
       setError(err instanceof Error ? err.message : 'Failed to create client');
+    } finally {
+      setIsSavingClient(false);
     }
   };
-
-  const calculateTotal = () => {
-    const { duration, ratePerHour } = formData;
-    if (duration && ratePerHour) {
-      return (duration / 60) * ratePerHour;
-    }
-    return 0;
-  };
-
+  
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form
+    if (!formData.clientId) {
+      setError('Please select a client');
+      return;
+    }
+    
+    if (!formData.serviceDate) {
+      setError('Please select a service date');
+      return;
+    }
+    
+    if (!formData.dueDate) {
+      setError('Please select a due date');
+      return;
+    }
+    
+    if (!formData.procedureType) {
+      setError('Please select a procedure type');
+      return;
+    }
+    
+    if (!formData.procedureCode) {
+      setError('Please enter a procedure code');
+      return;
+    }
+
+    if (formData.amount <= 0) {
+      setError('Please enter a valid amount');
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
+    setSuccess(null);
 
     try {
-      // const invoiceData: CreateInvoiceData = {
-      //   clientId: formData.clientId,
-      //   serviceDate: formData.serviceDate,
-      //   dueDate: formData.dueDate,
-      //   procedureType: formData.procedureType,
-      //   procedureCode: formData.procedureCode,
-      //   duration: formData.duration,
-      //   ratePerHour: formData.ratePerHour,
-      //   notes: formData.notes,
-      // };
+      const token = getAuthToken();
+      
+      if (!token) {
+        setError('Please login to continue');
+        setIsGenerating(false);
+        return;
+      }
 
-        // const invoice = await invoiceService.createInvoice(invoiceData);
-      // alert(`Invoice ${invoice.invoiceNumber} generated successfully!`);
+      // Prepare invoice data
+      const invoiceData = {
+        clientId: parseInt(formData.clientId),
+        serviceDate: formData.serviceDate,
+        dueDate: formData.dueDate,
+        procedureType: formData.procedureType,
+        procedureCode: formData.procedureCode,
+        amount: formData.amount,
+        notes: formData.notes || '',
+      };
+
+      const response = await fetch(`${API_URL}/api/invoices`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(invoiceData),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to generate invoice');
+      }
+
+      const data = await response.json();
+      setSuccess(`Invoice ${data.invoiceNumber || ''} generated successfully!`);
       
       // Reset form
       setFormData({
@@ -125,15 +288,31 @@ export const InvoiceGenerator: React.FC = () => {
         dueDate: '',
         procedureType: '',
         procedureCode: '',
-        duration: 0,
-        ratePerHour: 0,
+        amount: 0,
         notes: '',
       });
+
+      setTimeout(() => setSuccess(null), 5000);
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error generating invoice');
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleCancelNewClient = () => {
+    setShowNewClient(false);
+    setNewClient({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phoneNumber: '',
+      address: '',
+      idNumber: '',
+      passportNumber: '',
+    });
+    setError(null);
   };
 
   return (
@@ -145,7 +324,26 @@ export const InvoiceGenerator: React.FC = () => {
 
       {error && (
         <div className={styles.errorAlert}>
+          <AlertCircle size={20} />
           <span>{error}</span>
+          <button 
+            className={styles.closeAlert} 
+            onClick={() => setError(null)}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {success && (
+        <div className={styles.successAlert}>
+          <span>{success}</span>
+          <button 
+            className={styles.closeAlert} 
+            onClick={() => setSuccess(null)}
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
 
@@ -159,38 +357,41 @@ export const InvoiceGenerator: React.FC = () => {
             </h3>
             
             <div className={styles.formGroup}>
-              <label htmlFor="clientId">Select Client</label>
-              <select
-                id="clientId"
-                name="clientId"
-                value={formData.clientId}
-                onChange={handleChange}
-                required
-                disabled={loading}
-              >
-                <option value="">{loading ? 'Loading clients...' : 'Select a client...'}</option>
-                {/* {clients.map(client => (
-                  <option key={client.id} value={client.id}>
-                    {client.firstName} {client.lastName} - {client.email}
-                  </option>
-                ))} */}
-              </select>
-              <button
-                type="button"
-                className={styles.newClientButton}
-                onClick={() => setShowNewClient(!showNewClient)}
-              >
-                + Add New Client
-              </button>
+              <label htmlFor="clientId">Select Client *</label>
+              <div className={styles.selectWrapper}>
+                <select
+                  id="clientId"
+                  name="clientId"
+                  value={formData.clientId}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                >
+                  <option value="">{loading ? 'Loading clients...' : 'Select a client...'}</option>
+                  {clients.map(client => (
+                    <option key={client.id} value={client.id}>
+                      {client.firstName} {client.lastName} - {client.email}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className={styles.newClientButton}
+                  onClick={() => setShowNewClient(!showNewClient)}
+                >
+                  <Plus size={16} />
+                  Add New
+                </button>
+              </div>
             </div>
 
             {showNewClient && (
               <div className={styles.newClientForm}>
                 <h4>New Client</h4>
-                <form onSubmit={handleAddClient}>
+                <div>
                   <div className={styles.formRow}>
                     <div className={styles.formGroup}>
-                      <label>First Name</label>
+                      <label>First Name *</label>
                       <input
                         type="text"
                         name="firstName"
@@ -201,7 +402,7 @@ export const InvoiceGenerator: React.FC = () => {
                       />
                     </div>
                     <div className={styles.formGroup}>
-                      <label>Last Name</label>
+                      <label>Last Name *</label>
                       <input
                         type="text"
                         name="lastName"
@@ -212,8 +413,9 @@ export const InvoiceGenerator: React.FC = () => {
                       />
                     </div>
                   </div>
+                  
                   <div className={styles.formGroup}>
-                    <label>Email</label>
+                    <label>Email *</label>
                     <input
                       type="email"
                       name="email"
@@ -223,16 +425,19 @@ export const InvoiceGenerator: React.FC = () => {
                       required
                     />
                   </div>
+                  
                   <div className={styles.formGroup}>
-                    <label>Phone</label>
+                    <label>Phone Number *</label>
                     <input
                       type="tel"
-                      name="phone"
-                      value={newClient.phone}
+                      name="phoneNumber"
+                      value={newClient.phoneNumber}
                       onChange={handleNewClientChange}
                       placeholder="Phone number"
+                      required
                     />
                   </div>
+
                   <div className={styles.formGroup}>
                     <label>Address</label>
                     <input
@@ -243,20 +448,53 @@ export const InvoiceGenerator: React.FC = () => {
                       placeholder="Address"
                     />
                   </div>
+
+                  <div className={styles.formRow}>
+                    <div className={styles.formGroup}>
+                      <label>ID Number</label>
+                      <input
+                        type="text"
+                        name="idNumber"
+                        value={newClient.idNumber}
+                        onChange={handleNewClientChange}
+                        placeholder="ID Number"
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label>Passport Number</label>
+                      <input
+                        type="text"
+                        name="passportNumber"
+                        value={newClient.passportNumber}
+                        onChange={handleNewClientChange}
+                        placeholder="Passport Number"
+                      />
+                    </div>
+                  </div>
+
                   <div className={styles.newClientActions}>
-                    <button type="button" onClick={() => setShowNewClient(false)}>
+                    <button 
+                      type="button" 
+                      className={styles.cancelButton}
+                      onClick={handleCancelNewClient}
+                    >
                       Cancel
                     </button>
-                    <button type="submit" className={styles.saveClientButton}>
-                      Save Client
+                    <button 
+                      type="button"
+                      className={styles.saveClientButton}
+                      onClick={handleAddClient}
+                      disabled={isSavingClient}
+                    >
+                      {isSavingClient ? 'Saving...' : 'Save Client'}
                     </button>
                   </div>
-                </form>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Service Details - Basic Fields */}
+          {/* Service Details */}
           <div className={styles.formSection}>
             <h3 className={styles.sectionTitle}>
               <FileText size={18} />
@@ -267,7 +505,7 @@ export const InvoiceGenerator: React.FC = () => {
               <div className={styles.formGroup}>
                 <label htmlFor="serviceDate">
                   <Calendar size={14} />
-                  Service Date
+                  Service Date *
                 </label>
                 <input
                   id="serviceDate"
@@ -281,7 +519,7 @@ export const InvoiceGenerator: React.FC = () => {
               <div className={styles.formGroup}>
                 <label htmlFor="dueDate">
                   <Calendar size={14} />
-                  Due Date
+                  Due Date *
                 </label>
                 <input
                   id="dueDate"
@@ -296,7 +534,7 @@ export const InvoiceGenerator: React.FC = () => {
 
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
-                <label htmlFor="procedureType">Procedure Type</label>
+                <label htmlFor="procedureType">Procedure Type *</label>
                 <select
                   id="procedureType"
                   name="procedureType"
@@ -310,12 +548,15 @@ export const InvoiceGenerator: React.FC = () => {
                   <option value="Local">Local Anesthesia</option>
                   <option value="Epidural">Epidural</option>
                   <option value="Spinal">Spinal</option>
+                  <option value="Consultation">Consultation</option>
+                  <option value="Surgery">Surgery</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
               <div className={styles.formGroup}>
                 <label htmlFor="procedureCode">
                   <Hash size={14} />
-                  Procedure Code
+                  Procedure Code *
                 </label>
                 <input
                   id="procedureCode"
@@ -329,37 +570,21 @@ export const InvoiceGenerator: React.FC = () => {
               </div>
             </div>
 
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label htmlFor="duration">Duration (minutes)</label>
-                <input
-                  id="duration"
-                  name="duration"
-                  type="number"
-                  placeholder="e.g., 60"
-                  value={formData.duration || ''}
-                  onChange={handleChange}
-                  required
-                  min="1"
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label htmlFor="ratePerHour">
-                  <DollarSign size={14} />
-                  Rate per Hour ($)
-                </label>
-                <input
-                  id="ratePerHour"
-                  name="ratePerHour"
-                  type="number"
-                  placeholder="e.g., 150"
-                  value={formData.ratePerHour || ''}
-                  onChange={handleChange}
-                  required
-                  min="0"
-                  step="0.01"
-                />
-              </div>
+            <div className={styles.formGroup}>
+              <label htmlFor="amount">
+                Amount (ZAR) *
+              </label>
+              <input
+                id="amount"
+                name="amount"
+                type="number"
+                placeholder="0.00"
+                value={formData.amount || ''}
+                onChange={handleChange}
+                required
+                min="0.01"
+                step="0.01"
+              />
             </div>
 
             <div className={styles.formGroup}>
@@ -376,32 +601,25 @@ export const InvoiceGenerator: React.FC = () => {
           </div>
         </div>
 
-        {/* Total and Actions */}
-        <div className={styles.totalSection}>
-          <div className={styles.totalDisplay}>
-            <span className={styles.totalLabel}>Total Amount:</span>
-            <span className={styles.totalAmount}>${calculateTotal().toFixed(2)}</span>
-          </div>
-
-          <div className={styles.actionButtons}>
-            <button
-              type="submit"
-              className={styles.generateButton}
-              disabled={isGenerating}
-            >
-              {isGenerating ? (
-                <>
-                  <span className={styles.spinner}></span>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <FileText size={18} />
-                  Generate Invoice
-                </>
-              )}
-            </button>
-          </div>
+        {/* Actions */}
+        <div className={styles.actionButtons}>
+          <button
+            type="submit"
+            className={styles.generateButton}
+            disabled={isGenerating || loading}
+          >
+            {isGenerating ? (
+              <>
+                <span className={styles.spinner}></span>
+                Generating...
+              </>
+            ) : (
+              <>
+                <FileText size={18} />
+                Generate Invoice
+              </>
+            )}
+          </button>
         </div>
 
         {/* Delivery Options */}

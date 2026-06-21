@@ -21,22 +21,22 @@ public class AuthService
         _configuration = configuration;
     }
 
-    public async Task<(bool Success, string? Token, string? Message)> LoginAsync(string username, string password)
+    public async Task<(bool Success, string? Token, string? Message)> LoginAsync(string email, string password)
     {
         try
         {
             var supabase = await SupabaseClientFactory.GetClientAsync();
 
-            // Find user by username
+            // Find user by email
             var userResult = await supabase
                 .From<User>()
-                .Filter("username", Operator.Equals, username.ToLower())
+                .Filter("email", Operator.Equals, email.ToLower())
                 .Get();
 
             if (userResult.Models.Count == 0)
             {
-                _logger.LogWarning("Login attempt with non-existent username: {Username}", username);
-                return (false, null, "Invalid username or password");
+                _logger.LogWarning("Login attempt with non-existent email: {Email}", email);
+                return (false, null, "Invalid email or password");
             }
 
             var user = userResult.Models[0];
@@ -50,8 +50,8 @@ public class AuthService
             var passwordHash = HashPassword(password, user.PasswordSalt);
             if (passwordHash != user.PasswordHash)
             {
-                _logger.LogWarning("Invalid password attempt for user: {Username}", username);
-                return (false, null, "Invalid username or password");
+                _logger.LogWarning("Invalid password attempt for user: {Email}", email);
+                return (false, null, "Invalid email or password");
             }
 
             // Update last login
@@ -61,30 +61,25 @@ public class AuthService
             // Generate JWT token
             var token = GenerateJwtToken(user);
 
-            _logger.LogInformation("User logged in: {Username}", username);
+            _logger.LogInformation("User logged in: {Email}", email);
             return (true, token, null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during login for user: {Username}", username);
+            _logger.LogError(ex, "Error during login for user: {Email}", email);
             return (false, null, "An error occurred during login");
         }
     }
 
-    public async Task<(bool Success, string? Message)> RegisterUserAsync(string username, string email, string password, string fullName)
+    public async Task<(bool Success, string? Message)> RegisterUserAsync(
+        string email, 
+        string password, 
+        string fullName,
+        BusinessProfile businessProfile)
     {
         try
         {
             var supabase = await SupabaseClientFactory.GetClientAsync();
-
-            // Check if username exists
-            var existingUser = await supabase
-                .From<User>()
-                .Filter("username", Operator.Equals, username.ToLower())
-                .Get();
-
-            if (existingUser.Models.Count > 0)
-                return (false, "Username already exists");
 
             // Check if email exists
             var existingEmail = await supabase
@@ -99,31 +94,49 @@ public class AuthService
             var salt = GenerateSalt();
             var passwordHash = HashPassword(password, salt);
 
+            // Create user
             var user = new User
             {
-                Username = username.ToLower(),
                 Email = email.ToLower(),
                 PasswordHash = passwordHash,
                 PasswordSalt = salt,
                 FullName = fullName,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
-                Role = "doctor" // Default role
+                Role = "admin"
             };
 
+            // Insert user
             await supabase.From<User>().Insert(user);
 
-            _logger.LogInformation("New user registered: {Username}", username);
+            // Get the inserted user with ID
+            var insertedUser = await supabase
+                .From<User>()
+                .Filter("email", Operator.Equals, email.ToLower())
+                .Get();
+
+            if (insertedUser.Models.Count == 0)
+                return (false, "Failed to create user");
+
+            // Set UserId and create business profile with all fields
+            businessProfile.UserId = insertedUser.Models[0].Id;
+            businessProfile.CreatedAt = DateTime.UtcNow;
+            businessProfile.UpdatedAt = DateTime.UtcNow;
+
+            // Insert business profile
+            await supabase.From<BusinessProfile>().Insert(businessProfile);
+
+            _logger.LogInformation("New user registered: {Email}", email);
             return (true, "User registered successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error registering user: {Username}", username);
+            _logger.LogError(ex, "Error registering user: {Email}", email);
             return (false, "An error occurred during registration");
         }
     }
 
-    public async Task<(bool Success, string? Message)> ChangePasswordAsync(string username, string currentPassword, string newPassword)
+    public async Task<(bool Success, string? Message)> ChangePasswordAsync(string email, string currentPassword, string newPassword)
     {
         try
         {
@@ -131,7 +144,7 @@ public class AuthService
 
             var userResult = await supabase
                 .From<User>()
-                .Filter("username", Operator.Equals, username.ToLower())
+                .Filter("email", Operator.Equals, email.ToLower())
                 .Get();
 
             if (userResult.Models.Count == 0)
@@ -150,13 +163,189 @@ public class AuthService
             user.PasswordSalt = newSalt;
             await supabase.From<User>().Update(user);
 
-            _logger.LogInformation("Password changed for user: {Username}", username);
+            _logger.LogInformation("Password changed for user: {Email}", email);
             return (true, "Password changed successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error changing password for user: {Username}", username);
+            _logger.LogError(ex, "Error changing password for user: {Email}", email);
             return (false, "An error occurred while changing password");
+        }
+    }
+
+    public async Task<BusinessProfile?> GetBusinessProfileByEmailAsync(string email)
+    {
+        try
+        {
+            var supabase = await SupabaseClientFactory.GetClientAsync();
+
+            // First get user by email
+            var userResult = await supabase
+                .From<User>()
+                .Filter("email", Operator.Equals, email.ToLower())
+                .Get();
+
+            if (userResult.Models.Count == 0)
+                return null;
+
+            var userId = userResult.Models[0].Id;
+
+            // Then get business profile
+            var profileResult = await supabase
+                .From<BusinessProfile>()
+                .Filter("user_id", Operator.Equals, userId)
+                .Get();
+
+            return profileResult.Models.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching business profile for email: {Email}", email);
+            return null;
+        }
+    }
+
+    public async Task<BusinessProfile?> GetBusinessProfileByUserIdAsync(int userId)
+    {
+        try
+        {
+            var supabase = await SupabaseClientFactory.GetClientAsync();
+
+            var profileResult = await supabase
+                .From<BusinessProfile>()
+                .Filter("user_id", Operator.Equals, userId)
+                .Get();
+
+            return profileResult.Models.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching business profile for user ID: {UserId}", userId);
+            return null;
+        }
+    }
+
+    public async Task<(bool Success, string? Message)> UpdateBusinessProfileAsync(
+        string email, 
+        BusinessProfile updatedProfile)
+    {
+        try
+        {
+            var supabase = await SupabaseClientFactory.GetClientAsync();
+
+            // Get user by email
+            var userResult = await supabase
+                .From<User>()
+                .Filter("email", Operator.Equals, email.ToLower())
+                .Get();
+
+            if (userResult.Models.Count == 0)
+                return (false, "User not found");
+
+            var userId = userResult.Models[0].Id;
+
+            // Get existing business profile
+            var profileResult = await supabase
+                .From<BusinessProfile>()
+                .Filter("user_id", Operator.Equals, userId)
+                .Get();
+
+            if (profileResult.Models.Count == 0)
+                return (false, "Business profile not found");
+
+            var existingProfile = profileResult.Models[0];
+
+            // Update all fields
+            existingProfile.BusinessName = updatedProfile.BusinessName;
+            existingProfile.BusinessAddress = updatedProfile.BusinessAddress;
+            existingProfile.PhoneNumber = updatedProfile.PhoneNumber;
+            existingProfile.VatNumber = updatedProfile.VatNumber;
+            existingProfile.AccountNumber = updatedProfile.AccountNumber;
+            existingProfile.BankName = updatedProfile.BankName ?? existingProfile.BankName;
+            existingProfile.BranchCode = updatedProfile.BranchCode ?? existingProfile.BranchCode;
+            existingProfile.AccountHolderName = updatedProfile.AccountHolderName ?? existingProfile.AccountHolderName;
+            existingProfile.BusinessEmail = updatedProfile.BusinessEmail ?? existingProfile.BusinessEmail;
+            existingProfile.LogoUrl = updatedProfile.LogoUrl ?? existingProfile.LogoUrl;
+            existingProfile.InvoicePrefix = updatedProfile.InvoicePrefix ?? existingProfile.InvoicePrefix;
+            existingProfile.Currency = updatedProfile.Currency ?? existingProfile.Currency;
+            existingProfile.UpdatedAt = DateTime.UtcNow;
+
+            await supabase.From<BusinessProfile>().Update(existingProfile);
+
+            _logger.LogInformation("Business profile updated for email: {Email}", email);
+            return (true, "Business profile updated successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating business profile for email: {Email}", email);
+            return (false, "An error occurred while updating business profile");
+        }
+    }
+
+    public async Task<string?> GetNextInvoiceNumberAsync(int businessProfileId)
+    {
+        try
+        {
+            var supabase = await SupabaseClientFactory.GetClientAsync();
+
+            // Get business profile
+            var profileResult = await supabase
+                .From<BusinessProfile>()
+                .Filter("id", Operator.Equals, businessProfileId)
+                .Get();
+
+            if (profileResult.Models.Count == 0)
+                return null;
+
+            var profile = profileResult.Models[0];
+            
+            // Increment counter
+            profile.InvoiceNumberCounter += 1;
+            profile.UpdatedAt = DateTime.UtcNow;
+            
+            // Update in database
+            await supabase.From<BusinessProfile>().Update(profile);
+            
+            // Generate invoice number (e.g., INV-001, INV-002)
+            string paddedNumber = profile.InvoiceNumberCounter.ToString("D3");
+            string invoiceNumber = $"{profile.InvoicePrefix}{paddedNumber}";
+            
+            return invoiceNumber;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating invoice number for business: {BusinessProfileId}", businessProfileId);
+            return null;
+        }
+    }
+
+    public async Task<bool> ResetInvoiceCounterAsync(int businessProfileId, int newCounter = 1)
+    {
+        try
+        {
+            var supabase = await SupabaseClientFactory.GetClientAsync();
+
+            var profileResult = await supabase
+                .From<BusinessProfile>()
+                .Filter("id", Operator.Equals, businessProfileId)
+                .Get();
+
+            if (profileResult.Models.Count == 0)
+                return false;
+
+            var profile = profileResult.Models[0];
+            profile.InvoiceNumberCounter = newCounter;
+            profile.UpdatedAt = DateTime.UtcNow;
+            
+            await supabase.From<BusinessProfile>().Update(profile);
+            
+            _logger.LogInformation("Invoice counter reset for business: {BusinessProfileId}", businessProfileId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting invoice counter for business: {BusinessProfileId}", businessProfileId);
+            return false;
         }
     }
 
@@ -175,9 +364,11 @@ public class AuthService
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.Username),
+            new Claim(ClaimTypes.Name, user.Email),
             new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Role, user.Role ?? "doctor"),
+            new Claim(ClaimTypes.Role, user.Role ?? "admin"),
+            new Claim("UserId", user.Id.ToString()),
+            new Claim("FullName", user.FullName),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 

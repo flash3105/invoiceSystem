@@ -1,24 +1,21 @@
 // src/pages/Login/Login.tsx
 import React, { useState } from 'react';
 import { Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import styles from './Login.module.css';
 
 // API base URL - change this to your actual API endpoint
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface LoginResponse {
-  success: boolean;
   token?: string;
-  user?: {
-    id: string;
-    email: string;
-    name: string;
-    role: string;
-  };
+  email?: string;
+  expiresAt?: string;
   message?: string;
 }
 
 const Login: React.FC = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -58,8 +55,7 @@ const Login: React.FC = () => {
     setError(null);
 
     try {
-      // Real API call
-      const response = await fetch(`${API_URL}/auth/login`, {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,18 +72,19 @@ const Login: React.FC = () => {
         throw new Error(data.message || 'Login failed');
       }
 
-      if (data.success && data.token) {
+      if (data.token) {
         // Store token based on remember me preference
-        if (rememberMe) {
-          localStorage.setItem('auth_token', data.token);
-          localStorage.setItem('user', JSON.stringify(data.user));
-        } else {
-          sessionStorage.setItem('auth_token', data.token);
-          sessionStorage.setItem('user', JSON.stringify(data.user));
+        const storage = rememberMe ? localStorage : sessionStorage;
+        storage.setItem('auth_token', data.token);
+        storage.setItem('user_email', data.email || email);
+        
+        // Store expiration if provided
+        if (data.expiresAt) {
+          storage.setItem('token_expires_at', data.expiresAt);
         }
 
         // Redirect to dashboard
-        window.location.href = '/dashboard';
+        navigate('/dashboard');
       } else {
         setError(data.message || 'Invalid email or password');
       }
@@ -156,11 +153,13 @@ const Login: React.FC = () => {
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
+                  minLength={6}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className={styles.passwordToggle}
+                  tabIndex={-1}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -196,11 +195,20 @@ const Login: React.FC = () => {
               )}
             </button>
           </form>
+
+          <div className={styles.registerLink}>
+            <p>
+              Don't have an account?{' '}
+              <Link to="/register" className={styles.link}>
+                Create one here
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
 
       <div className={styles.loginFooter}>
-        <p>© {new Date().getFullYear()} All rights reserved.</p>
+        <p>© {new Date().getFullYear()} Invoice System. All rights reserved.</p>
       </div>
     </div>
   );

@@ -9,8 +9,7 @@ public class User : BaseModel
     [PrimaryKey("id")]
     public int Id { get; set; }
 
-    [Column("username")]
-    public string Username { get; set; } = string.Empty;
+    
 
     [Column("email")]
     public string Email { get; set; } = string.Empty;

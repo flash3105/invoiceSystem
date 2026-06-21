@@ -20,12 +20,12 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
+        if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
         {
-            return BadRequest(new { message = "Username and password are required" });
+            return BadRequest(new { message = "Email and password are required" });
         }
 
-        var result = await _authService.LoginAsync(request.Username, request.Password);
+        var result = await _authService.LoginAsync(request.Email, request.Password);
 
         if (!result.Success)
         {
@@ -35,7 +35,7 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             token = result.Token,
-            username = request.Username,
+            email = request.Email,
             expiresAt = DateTime.UtcNow.AddDays(30)
         });
     }
@@ -43,19 +43,30 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        if (string.IsNullOrEmpty(request.Username) || 
-            string.IsNullOrEmpty(request.Email) || 
+        // Validate user account fields
+        if (string.IsNullOrEmpty(request.Email) || 
             string.IsNullOrEmpty(request.Password) ||
             string.IsNullOrEmpty(request.FullName))
         {
-            return BadRequest(new { message = "All fields are required" });
+            return BadRequest(new { message = "Email, password, and full name are required" });
+        }
+
+        // Validate business profile fields
+        if (request.BusinessProfile == null ||
+            string.IsNullOrEmpty(request.BusinessProfile.BusinessName) ||
+            string.IsNullOrEmpty(request.BusinessProfile.BusinessAddress) ||
+            string.IsNullOrEmpty(request.BusinessProfile.PhoneNumber) ||
+            string.IsNullOrEmpty(request.BusinessProfile.VatNumber) ||
+            string.IsNullOrEmpty(request.BusinessProfile.AccountNumber))
+        {
+            return BadRequest(new { message = "All business profile fields are required" });
         }
 
         var result = await _authService.RegisterUserAsync(
-            request.Username,
             request.Email,
             request.Password,
-            request.FullName
+            request.FullName,
+            request.BusinessProfile
         );
 
         if (!result.Success)
@@ -69,15 +80,14 @@ public class AuthController : ControllerBase
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {
-        // Get username from token
-        var username = User.Identity?.Name;
-        if (string.IsNullOrEmpty(username))
+        var email = User.Identity?.Name;
+        if (string.IsNullOrEmpty(email))
         {
             return Unauthorized(new { message = "User not authenticated" });
         }
 
         var result = await _authService.ChangePasswordAsync(
-            username,
+            email,
             request.CurrentPassword,
             request.NewPassword
         );
@@ -89,20 +99,81 @@ public class AuthController : ControllerBase
 
         return Ok(new { message = result.Message });
     }
+
+    [HttpGet("business-profile")]
+    public async Task<IActionResult> GetBusinessProfile()
+    {
+        var email = User.Identity?.Name;
+        if (string.IsNullOrEmpty(email))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var profile = await _authService.GetBusinessProfileByEmailAsync(email);
+        if (profile == null)
+        {
+            return NotFound(new { message = "Business profile not found" });
+        }
+
+        return Ok(profile);
+    }
+
+    [HttpPut("business-profile")]
+    public async Task<IActionResult> UpdateBusinessProfile([FromBody] BusinessProfile updatedProfile)
+    {
+        var email = User.Identity?.Name;
+        if (string.IsNullOrEmpty(email))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var result = await _authService.UpdateBusinessProfileAsync(email, updatedProfile);
+        
+        if (!result.Success)
+        {
+            return BadRequest(new { message = result.Message });
+        }
+
+        return Ok(new { message = result.Message });
+    }
+
+    [HttpGet("next-invoice-number")]
+    public async Task<IActionResult> GetNextInvoiceNumber()
+    {
+        var email = User.Identity?.Name;
+        if (string.IsNullOrEmpty(email))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        var profile = await _authService.GetBusinessProfileByEmailAsync(email);
+        if (profile == null)
+        {
+            return NotFound(new { message = "Business profile not found" });
+        }
+
+        var invoiceNumber = await _authService.GetNextInvoiceNumberAsync(profile.Id);
+        if (invoiceNumber == null)
+        {
+            return BadRequest(new { message = "Failed to generate invoice number" });
+        }
+
+        return Ok(new { invoiceNumber });
+    }
 }
 
 public class LoginRequest
 {
-    public string Username { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
 }
 
 public class RegisterRequest
 {
-    public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
+    public BusinessProfile BusinessProfile { get; set; } = new BusinessProfile();
 }
 
 public class ChangePasswordRequest
