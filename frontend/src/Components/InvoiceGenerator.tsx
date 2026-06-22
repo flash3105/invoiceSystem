@@ -40,6 +40,13 @@ interface NewClientData {
   passportNumber: string;
 }
 
+interface InvoiceResponse {
+  id: number;
+  invoiceNumber: string;
+  total: number;
+  status: string;
+}
+
 export const InvoiceGenerator: React.FC = () => {
   const [formData, setFormData] = useState<InvoiceFormData>({
     clientId: '',
@@ -58,6 +65,7 @@ export const InvoiceGenerator: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [showNewClient, setShowNewClient] = useState(false);
   const [isSavingClient, setIsSavingClient] = useState(false);
+  const [generatedInvoice, setGeneratedInvoice] = useState<InvoiceResponse | null>(null);
   
   const [newClient, setNewClient] = useState<NewClientData>({
     firstName: '',
@@ -243,6 +251,7 @@ export const InvoiceGenerator: React.FC = () => {
     setIsGenerating(true);
     setError(null);
     setSuccess(null);
+    setGeneratedInvoice(null);
 
     try {
       const token = getAuthToken();
@@ -253,16 +262,26 @@ export const InvoiceGenerator: React.FC = () => {
         return;
       }
 
-      // Prepare invoice data
+      // Prepare invoice data - matches backend CreateInvoiceRequest
       const invoiceData = {
         clientId: parseInt(formData.clientId),
         serviceDate: formData.serviceDate,
         dueDate: formData.dueDate,
         procedureType: formData.procedureType,
         procedureCode: formData.procedureCode,
-        amount: formData.amount,
+        taxRate: 0, // Default tax rate
         notes: formData.notes || '',
+        items: [
+          {
+            description: `${formData.procedureType} - ${formData.procedureCode}`,
+            code: formData.procedureCode,
+            quantity: 1,
+            rate: formData.amount,
+          }
+        ]
       };
+
+      console.log('Sending invoice data:', invoiceData);
 
       const response = await fetch(`${API_URL}/api/invoices`, {
         method: 'POST',
@@ -273,13 +292,18 @@ export const InvoiceGenerator: React.FC = () => {
         body: JSON.stringify(invoiceData),
       });
 
+      console.log('Response status:', response.status);
+
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.message || 'Failed to generate invoice');
+        throw new Error(data.message || data.details || 'Failed to generate invoice');
       }
 
       const data = await response.json();
-      setSuccess(`Invoice ${data.invoiceNumber || ''} generated successfully!`);
+      console.log('Invoice created:', data);
+      
+      setGeneratedInvoice(data);
+      setSuccess(`Invoice ${data.invoiceNumber} generated successfully! (Total: R${data.total.toFixed(2)})`);
       
       // Reset form
       setFormData({
@@ -295,9 +319,88 @@ export const InvoiceGenerator: React.FC = () => {
       setTimeout(() => setSuccess(null), 5000);
       
     } catch (err) {
+      console.error('Error generating invoice:', err);
       setError(err instanceof Error ? err.message : 'Error generating invoice');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!generatedInvoice) {
+      setError('No invoice to download. Please generate an invoice first.');
+      return;
+    }
+
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        setError('Please login to continue');
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/invoices/${generatedInvoice.id}/pdf`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download PDF');
+      }
+
+      // Get the PDF as a blob
+      const blob = await response.blob();
+      
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoice_${generatedInvoice.invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      setSuccess('PDF downloaded successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error downloading PDF:', err);
+      setError(err instanceof Error ? err.message : 'Failed to download PDF');
+    }
+  };
+
+  const handleEmailInvoice = async () => {
+    if (!generatedInvoice) {
+      setError('No invoice to send. Please generate an invoice first.');
+      return;
+    }
+
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        setError('Please login to continue');
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/invoices/${generatedInvoice.id}/email`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to send invoice email');
+      }
+
+      setSuccess('Invoice sent via email successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error sending invoice email:', err);
+      setError(err instanceof Error ? err.message : 'Failed to send invoice email');
     }
   };
 
@@ -543,9 +646,9 @@ export const InvoiceGenerator: React.FC = () => {
                   required
                 >
                   <option value="">Select type...</option>
-                  <option value="General">General Anesthesia</option>
-                  <option value="Regional">Regional Anesthesia</option>
-                  <option value="Local">Local Anesthesia</option>
+                  <option value="General Anesthesia">General Anesthesia</option>
+                  <option value="Regional Anesthesia">Regional Anesthesia</option>
+                  <option value="Local Anesthesia">Local Anesthesia</option>
                   <option value="Epidural">Epidural</option>
                   <option value="Spinal">Spinal</option>
                   <option value="Consultation">Consultation</option>
@@ -622,24 +725,44 @@ export const InvoiceGenerator: React.FC = () => {
           </button>
         </div>
 
-        {/* Delivery Options */}
-        <div className={styles.deliverySection}>
-          <p className={styles.deliveryLabel}>After generation, you can:</p>
-          <div className={styles.deliveryButtons}>
-            <button type="button" className={styles.deliveryButton}>
-              <Mail size={16} />
-              Send via Email
-            </button>
-            <button type="button" className={styles.deliveryButton}>
-              <Phone size={16} />
-              Send via WhatsApp
-            </button>
-            <button type="button" className={styles.deliveryButton}>
-              <Download size={16} />
-              Download PDF
-            </button>
+        {/* Delivery Options - Only show after invoice is generated */}
+        {generatedInvoice && (
+          <div className={styles.deliverySection}>
+            <p className={styles.deliveryLabel}>Invoice #{generatedInvoice.invoiceNumber} generated!</p>
+            <p className={styles.deliverySubLabel}>You can now:</p>
+            <div className={styles.deliveryButtons}>
+              <button 
+                type="button" 
+                className={styles.deliveryButton}
+                onClick={handleEmailInvoice}
+              >
+                <Mail size={16} />
+                Send via Email
+              </button>
+              <button 
+                type="button" 
+                className={styles.deliveryButton}
+                onClick={handleDownloadPDF}
+              >
+                <Download size={16} />
+                Download PDF
+              </button>
+              <button 
+                type="button" 
+                className={styles.deliveryButton}
+                onClick={() => {
+                  // WhatsApp sharing
+                  const message = `Invoice ${generatedInvoice.invoiceNumber} - Total: R${generatedInvoice.total.toFixed(2)}`;
+                  const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                  window.open(url, '_blank');
+                }}
+              >
+                <Phone size={16} />
+                Share via WhatsApp
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </form>
     </div>
   );
