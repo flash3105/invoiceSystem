@@ -5,11 +5,15 @@ using InvoiceSystem.Services;
 using InvoiceSystem.Helpers;
 using Microsoft.OpenApi.Models;
 using dotenv.net;
+using QuestPDF.Infrastructure;  // ← Add this for QuestPDF
 
 // Load .env file
 DotEnv.Load(options: new DotEnvOptions(envFilePaths: new[] { ".env" }));
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Register QuestPDF license (MUST be before any PDF generation)
+QuestPDF.Settings.License = LicenseType.Community;
 
 // Add services
 builder.Services.AddControllers();
@@ -45,6 +49,10 @@ builder.Services.AddSwaggerGen(c =>
 // Register services
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ClientService>();
+builder.Services.AddScoped<BusinessProfileService>();
+builder.Services.AddScoped<InvoiceService>();
+builder.Services.AddScoped<InvoicePdfService>();  // ← Make sure this is registered
+
 // CORS
 builder.Services.AddCors(options =>
 {
@@ -86,6 +94,5 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
 
 app.Run();

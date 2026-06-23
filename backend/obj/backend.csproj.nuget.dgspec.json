@@ -74,6 +74,10 @@
               "target": "Package",
               "version": "[7.5.1, )"
             },
+            "QuestPDF": {
+              "target": "Package",
+              "version": "[2026.6.0, )"
+            },
             "Supabase": {
               "target": "Package",
               "version": "[1.0.0, )"

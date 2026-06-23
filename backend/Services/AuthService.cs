@@ -27,7 +27,7 @@ public class AuthService
         {
             var supabase = await SupabaseClientFactory.GetClientAsync();
 
-            // Find user by email
+            // Find user by email - Use Filter instead of Where
             var userResult = await supabase
                 .From<User>()
                 .Filter("email", Operator.Equals, email.ToLower())
@@ -81,7 +81,7 @@ public class AuthService
         {
             var supabase = await SupabaseClientFactory.GetClientAsync();
 
-            // Check if email exists
+            // Check if email exists - Use Filter instead of Where
             var existingEmail = await supabase
                 .From<User>()
                 .Filter("email", Operator.Equals, email.ToLower())
@@ -109,7 +109,7 @@ public class AuthService
             // Insert user
             await supabase.From<User>().Insert(user);
 
-            // Get the inserted user with ID
+            // Get the inserted user with ID - Use Filter instead of Where
             var insertedUser = await supabase
                 .From<User>()
                 .Filter("email", Operator.Equals, email.ToLower())
@@ -118,7 +118,7 @@ public class AuthService
             if (insertedUser.Models.Count == 0)
                 return (false, "Failed to create user");
 
-            // Set UserId and create business profile with all fields
+            // Set UserId and create business profile
             businessProfile.UserId = insertedUser.Models[0].Id;
             businessProfile.CreatedAt = DateTime.UtcNow;
             businessProfile.UpdatedAt = DateTime.UtcNow;
@@ -142,6 +142,7 @@ public class AuthService
         {
             var supabase = await SupabaseClientFactory.GetClientAsync();
 
+            // Use Filter instead of Where
             var userResult = await supabase
                 .From<User>()
                 .Filter("email", Operator.Equals, email.ToLower())
@@ -179,7 +180,7 @@ public class AuthService
         {
             var supabase = await SupabaseClientFactory.GetClientAsync();
 
-            // First get user by email
+            // First get user by email - Use Filter instead of Where
             var userResult = await supabase
                 .From<User>()
                 .Filter("email", Operator.Equals, email.ToLower())
@@ -190,7 +191,7 @@ public class AuthService
 
             var userId = userResult.Models[0].Id;
 
-            // Then get business profile
+            // Then get business profile - Use Filter instead of Where
             var profileResult = await supabase
                 .From<BusinessProfile>()
                 .Filter("user_id", Operator.Equals, userId)
@@ -211,6 +212,7 @@ public class AuthService
         {
             var supabase = await SupabaseClientFactory.GetClientAsync();
 
+            // Use Filter instead of Where
             var profileResult = await supabase
                 .From<BusinessProfile>()
                 .Filter("user_id", Operator.Equals, userId)
@@ -233,7 +235,7 @@ public class AuthService
         {
             var supabase = await SupabaseClientFactory.GetClientAsync();
 
-            // Get user by email
+            // Get user by email - Use Filter instead of Where
             var userResult = await supabase
                 .From<User>()
                 .Filter("email", Operator.Equals, email.ToLower())
@@ -244,7 +246,7 @@ public class AuthService
 
             var userId = userResult.Models[0].Id;
 
-            // Get existing business profile
+            // Get existing business profile - Use Filter instead of Where
             var profileResult = await supabase
                 .From<BusinessProfile>()
                 .Filter("user_id", Operator.Equals, userId)
@@ -255,7 +257,7 @@ public class AuthService
 
             var existingProfile = profileResult.Models[0];
 
-            // Update all fields
+            // Update fields
             existingProfile.BusinessName = updatedProfile.BusinessName;
             existingProfile.BusinessAddress = updatedProfile.BusinessAddress;
             existingProfile.PhoneNumber = updatedProfile.PhoneNumber;
@@ -288,7 +290,7 @@ public class AuthService
         {
             var supabase = await SupabaseClientFactory.GetClientAsync();
 
-            // Get business profile
+            // Get business profile - Use Filter instead of Where
             var profileResult = await supabase
                 .From<BusinessProfile>()
                 .Filter("id", Operator.Equals, businessProfileId)
@@ -325,6 +327,7 @@ public class AuthService
         {
             var supabase = await SupabaseClientFactory.GetClientAsync();
 
+            // Use Filter instead of Where
             var profileResult = await supabase
                 .From<BusinessProfile>()
                 .Filter("id", Operator.Equals, businessProfileId)
