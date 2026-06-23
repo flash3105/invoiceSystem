@@ -67,3 +67,11 @@ public class UpdateInvoiceRequest
     public string? Status { get; set; }
     public string? Notes { get; set; }
 }
+
+public class StatusInfoDto
+{
+    public string Value { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Color { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
+}

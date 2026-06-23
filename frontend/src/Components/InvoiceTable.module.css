@@ -1,4 +1,6 @@
 /* src/Components/InvoiceTable.module.css */
+
+/* ===== EXISTING STYLES (YOUR ORIGINAL CODE) ===== */
 .tableContainer {
   background: white;
   border-radius: 12px;
@@ -71,6 +73,9 @@
   cursor: pointer;
   font-size: 14px;
   transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .refreshButton:hover {
@@ -285,5 +290,137 @@
 
   .actions {
     flex-wrap: wrap;
+  }
+}
+
+/* ===== NEW STYLES ADDED FOR STATUS MANAGEMENT ===== */
+
+/* Success Message */
+.successMessage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  border-radius: 6px;
+  color: #155724;
+  margin-bottom: 16px;
+}
+
+.successMessage button {
+  background: none;
+  border: none;
+  color: #155724;
+  font-size: 18px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+/* Status Emoji */
+.statusEmoji {
+  margin-right: 2px;
+  font-size: 14px;
+}
+
+/* New Status Styles - All 7 Statuses */
+.statusPending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.statusOverdue {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.statusCancelled {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+.statusPartiallyPaid {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+/* Overdue Indicator */
+.overdueIndicator {
+  margin-left: 6px;
+  font-size: 14px;
+  cursor: help;
+}
+
+/* Filter Select with all status options */
+.filterSelect option {
+  padding: 4px 8px;
+}
+
+/* Enhanced Action Button for Status Update */
+.actionButtonStatus {
+  padding: 6px;
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #4a6a8b;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionButtonStatus:hover {
+  background: #edf2f7;
+  border-color: #1a3a5c;
+  color: #1a3a5c;
+}
+
+/* Status Badge with dynamic colors */
+.statusBadgeDynamic {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+/* Custom scrollbar for table */
+.tableWrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.tableWrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.tableWrapper::-webkit-scrollbar-thumb {
+  background: #c1c7cd;
+  border-radius: 4px;
+}
+
+.tableWrapper::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Status filter dropdown styling */
+.filterWrapper select {
+  min-width: 140px;
+}
+
+/* Small screen optimizations for status badges */
+@media (max-width: 480px) {
+  .statusBadge,
+  .statusBadgeDynamic {
+    font-size: 11px;
+    padding: 2px 8px;
+  }
+  
+  .statusEmoji {
+    font-size: 12px;
   }
 }
