@@ -65,4 +65,13 @@ public class Invoice : BaseModel
 
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    [Column("amount_paid")]
+    public decimal AmountPaid { get; set; } = 0;
+
+    [Column("balance_due")]
+    public decimal BalanceDue { get; set; }
+
+    [Column("payment_terms")]
+    public int? PaymentTerms { get; set; } // Days until payment is due
 }
