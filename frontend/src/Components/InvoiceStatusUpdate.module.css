@@ -378,7 +378,7 @@
    MOBILE RESPONSIVE
    ============================================ */
 
-/* Tablets and Small Screens */
+/* Tablets */
 @media (max-width: 768px) {
   .modalOverlay {
     padding: 12px;
@@ -636,6 +636,12 @@
 
   .currentStatus label {
     font-size: 12px;
+  }
+
+  .updateButton,
+  .cancelButton {
+    padding: 8px 12px;
+    font-size: 13px;
   }
 }
 

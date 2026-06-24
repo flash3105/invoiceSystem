@@ -154,26 +154,25 @@
 }
 
 /* ============================================
-   TABLE WRAPPER
+   TABLE WRAPPER - FIXED
    ============================================ */
 .tableWrapper {
   background: white;
   border-radius: var(--radius, 12px);
   border: 1px solid var(--gray-200, #e5e7eb);
-  overflow: hidden;
   box-shadow: var(--shadow, 0 1px 3px rgba(0, 0, 0, 0.1));
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 /* ============================================
-   TABLE
+   TABLE - FIXED: Full width without scroll
    ============================================ */
 .invoiceTable {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
-  min-width: 700px;
+  table-layout: auto; /* Changed from fixed to auto */
 }
 
 .invoiceTable thead {
@@ -501,7 +500,7 @@
    RESPONSIVE BREAKPOINTS
    ============================================ */
 
-/* Tablets */
+/* Tablets - Make table more compact */
 @media (max-width: 1024px) {
   .invoiceTable {
     font-size: 13px;
@@ -509,83 +508,23 @@
 
   .invoiceTable thead th,
   .invoiceTable tbody td {
-    padding: 12px 14px;
+    padding: 10px 12px;
+  }
+
+  .invoiceNumber {
+    font-size: 12px;
   }
 }
 
-/* Mobile Devices */
+/* Mobile Devices - Stack the table vertically */
 @media (max-width: 768px) {
-  .tableContainer {
-    padding: 0;
-  }
-
-  .tableHeader {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-
-  .headerLeft {
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
-
-  .headerLeft h2 {
-    font-size: 18px;
-  }
-
-  .invoiceCount {
-    font-size: 13px;
-    padding: 2px 10px;
-  }
-
-  .headerRight {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 8px;
-    width: 100%;
-  }
-
-  .filterWrapper {
-    flex: 1;
-    min-width: 0;
-    padding: 4px 10px 4px 8px;
-  }
-
-  .filterWrapper svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  .filterSelect {
-    min-width: 0;
-    width: 100%;
-    padding: 6px 2px;
-    font-size: 13px;
-  }
-
-  .refreshButton {
-    padding: 6px 12px;
-    font-size: 13px;
-    flex-shrink: 0;
-  }
-
-  .refreshButton svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  /* Table wrapper - allows horizontal scrolling */
   .tableWrapper {
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: var(--radius-sm, 8px);
   }
 
   .invoiceTable {
+    min-width: 700px;
     font-size: 13px;
-    min-width: 650px;
   }
 
   .invoiceTable thead th,
@@ -595,10 +534,6 @@
 
   .invoiceTable thead th {
     font-size: 11px;
-  }
-
-  .actions {
-    gap: 2px;
   }
 
   .actionButton {
@@ -614,19 +549,10 @@
   .statusBadge {
     font-size: 11px;
     padding: 3px 10px;
-    gap: 4px;
-  }
-
-  .statusEmoji {
-    font-size: 12px;
   }
 
   .amount {
     font-size: 13px;
-  }
-
-  .invoiceNumber {
-    font-size: 12px;
   }
 
   .clientInfo strong {
@@ -636,69 +562,36 @@
   .clientInfo span {
     font-size: 11px;
   }
-}
-
-/* Small Mobile Devices */
-@media (max-width: 480px) {
-  .tableContainer {
-    padding: 0;
-  }
-
-  .tableHeader {
-    gap: 10px;
-    margin-bottom: 12px;
-  }
 
   .headerLeft h2 {
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .invoiceCount {
-    font-size: 12px;
-    padding: 2px 8px;
-  }
-
-  .headerRight {
-    flex-direction: column;
-    width: 100%;
-    gap: 8px;
-  }
-
-  .filterWrapper {
-    width: 100%;
-    padding: 4px 10px 4px 8px;
-  }
-
-  .filterWrapper svg {
-    width: 14px;
-    height: 14px;
+    font-size: 13px;
+    padding: 2px 10px;
   }
 
   .filterSelect {
+    min-width: 120px;
     font-size: 13px;
-    padding: 6px 2px;
-    width: 100%;
   }
 
   .refreshButton {
-    width: 100%;
-    justify-content: center;
-    padding: 8px 12px;
+    padding: 6px 12px;
     font-size: 13px;
   }
+}
 
-  .refreshButton svg {
-    width: 14px;
-    height: 14px;
-  }
-
+/* Small Mobile */
+@media (max-width: 480px) {
   .tableWrapper {
     border-radius: var(--radius-sm, 6px);
   }
 
   .invoiceTable {
+    min-width: 600px;
     font-size: 12px;
-    min-width: 580px;
   }
 
   .invoiceTable thead th,
@@ -727,10 +620,6 @@
     font-size: 12px;
   }
 
-  .actions {
-    gap: 0;
-  }
-
   .actionButton {
     width: 24px;
     height: 24px;
@@ -751,33 +640,23 @@
     font-size: 11px;
   }
 
-  .overdueIndicator {
-    font-size: 12px;
-  }
-
-  .emptyState {
-    padding: 40px 16px;
-  }
-
-  .emptyState h3 {
+  .headerLeft h2 {
     font-size: 16px;
   }
 
-  .emptyState p {
-    font-size: 13px;
+  .invoiceCount {
+    font-size: 12px;
+    padding: 2px 8px;
   }
 
-  .errorContainer {
-    padding: 40px 16px;
+  .filterSelect {
+    font-size: 12px;
+    min-width: 100px;
   }
 
-  .loadingContainer {
-    padding: 40px 16px;
-  }
-
-  .successMessage {
-    padding: 10px 14px;
-    font-size: 13px;
+  .refreshButton {
+    font-size: 12px;
+    padding: 4px 10px;
   }
 }
 
@@ -810,14 +689,6 @@
 
   .statusEmoji {
     font-size: 10px;
-  }
-
-  .headerLeft h2 {
-    font-size: 14px;
-  }
-
-  .invoiceCount {
-    font-size: 11px;
   }
 }
 
