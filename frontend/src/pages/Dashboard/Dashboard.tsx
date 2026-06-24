@@ -33,7 +33,7 @@ const Dashboard: React.FC = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
     sessionStorage.clear();
-    window.location.href = '/login';
+    window.location.href = '/';
   };
 
   const handleTabChange = (tab: TabType) => {
