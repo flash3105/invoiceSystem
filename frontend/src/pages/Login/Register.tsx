@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { 
   Mail, Lock, User, Eye, EyeOff, AlertCircle, 
   Building, MapPin, Phone, FileText, CreditCard, 
-  Banknote, Globe, CheckCircle 
+  Banknote, Globe, CheckCircle, Stethoscope 
 } from 'lucide-react';
 import styles from './Register.module.css';
 
@@ -19,6 +19,7 @@ interface RegisterFormData {
   businessAddress: string;
   phoneNumber: string;
   vatNumber: string;
+  practiceNumber: string; // NEW: Practice Number
   accountNumber: string;
   bankName: string;
   branchCode: string;
@@ -40,6 +41,7 @@ export const Register: React.FC = () => {
     businessAddress: '',
     phoneNumber: '',
     vatNumber: '',
+    practiceNumber: '', // NEW: Practice Number
     accountNumber: '',
     bankName: '',
     branchCode: '',
@@ -55,8 +57,7 @@ export const Register: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<'account' | 'business'>('account');
 
   // API URL from environment variables
-  // Replace process.env with import.meta.env
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -123,6 +124,11 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       return false;
     }
 
+    if (!formData.practiceNumber.trim()) {
+      setError('Practice number is required');
+      return false;
+    }
+
     if (!formData.accountNumber.trim()) {
       setError('Account number is required');
       return false;
@@ -161,6 +167,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
           businessAddress: formData.businessAddress,
           phoneNumber: formData.phoneNumber,
           vatNumber: formData.vatNumber,
+          practiceNumber: formData.practiceNumber, // NEW: Practice Number
           accountNumber: formData.accountNumber,
           bankName: formData.bankName || undefined,
           branchCode: formData.branchCode || undefined,
@@ -198,6 +205,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
         businessAddress: '',
         phoneNumber: '',
         vatNumber: '',
+        practiceNumber: '',
         accountNumber: '',
         bankName: '',
         branchCode: '',
@@ -474,24 +482,45 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label htmlFor="accountNumber" className={styles.label}>
-                    <CreditCard size={18} />
-                    Account Number *
+                  <label htmlFor="practiceNumber" className={styles.label}>
+                    <Stethoscope size={18} />
+                    Practice Number *
                   </label>
                   <div className={styles.inputWrapper}>
-                    <CreditCard className={styles.inputIcon} size={20} />
+                    <Stethoscope className={styles.inputIcon} size={20} />
                     <input
-                      id="accountNumber"
-                      name="accountNumber"
+                      id="practiceNumber"
+                      name="practiceNumber"
                       type="text"
-                      value={formData.accountNumber}
+                      value={formData.practiceNumber}
                       onChange={handleChange}
-                      placeholder="Enter account number"
+                      placeholder="e.g., PRAC-12345"
                       className={styles.input}
                       disabled={isLoading}
                       required
                     />
                   </div>
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="accountNumber" className={styles.label}>
+                  <CreditCard size={18} />
+                  Account Number *
+                </label>
+                <div className={styles.inputWrapper}>
+                  <CreditCard className={styles.inputIcon} size={20} />
+                  <input
+                    id="accountNumber"
+                    name="accountNumber"
+                    type="text"
+                    value={formData.accountNumber}
+                    onChange={handleChange}
+                    placeholder="Enter account number"
+                    className={styles.input}
+                    disabled={isLoading}
+                    required
+                  />
                 </div>
               </div>
 
