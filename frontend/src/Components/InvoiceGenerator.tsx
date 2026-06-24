@@ -638,23 +638,16 @@ export const InvoiceGenerator: React.FC = () => {
             <div className={styles.formRow}>
               <div className={styles.formGroup}>
                 <label htmlFor="procedureType">Procedure Type *</label>
-                <select
+                <input
+                  type="text"
                   id="procedureType"
                   name="procedureType"
                   value={formData.procedureType}
                   onChange={handleChange}
+                  placeholder="Enter procedure type"
                   required
-                >
-                  <option value="">Select type...</option>
-                  <option value="General Anesthesia">General Anesthesia</option>
-                  <option value="Regional Anesthesia">Regional Anesthesia</option>
-                  <option value="Local Anesthesia">Local Anesthesia</option>
-                  <option value="Epidural">Epidural</option>
-                  <option value="Spinal">Spinal</option>
-                  <option value="Consultation">Consultation</option>
-                  <option value="Surgery">Surgery</option>
-                  <option value="Other">Other</option>
-                </select>
+                />
+              
               </div>
               <div className={styles.formGroup}>
                 <label htmlFor="procedureCode">
