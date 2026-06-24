@@ -175,9 +175,9 @@ const Login: React.FC = () => {
                 />
                 <span>Remember me</span>
               </label>
-              <a href="#" className={styles.forgotPassword}>
+              <Link to="/forgot-password" className={styles.forgotPassword}>
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             <button
