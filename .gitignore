@@ -8,9 +8,3 @@ frontend/dist/
 *.suo
 .env
 
-# frontend/.gitignore
-node_modules/
-dist/
-.vite/
-*.local
-.DS_Store

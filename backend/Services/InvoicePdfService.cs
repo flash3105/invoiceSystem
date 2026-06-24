@@ -1,5 +1,6 @@
 // Services/InvoicePdfService.cs
 using System;
+using System.IO;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -37,6 +38,17 @@ public class InvoicePdfService
                         // Business Details on the left
                         row.RelativeItem().Column(logoCol =>
                         {
+                            // --- INTEGRATED LOGO ---
+                            string baseDir = AppContext.BaseDirectory;
+                            string logoPath = Path.Combine(baseDir, "Services", "Images", "logo.png");
+
+                            if (File.Exists(logoPath))
+                            {
+                                logoCol.Item().Width(100).Image(logoPath);
+                                logoCol.Item().PaddingBottom(10); // Space between logo and text
+                            }
+                            // -----------------------
+
                             logoCol.Item().Text(business.BusinessName)
                                 .FontSize(24)
                                 .Bold()
@@ -47,6 +59,13 @@ public class InvoicePdfService
                             
                             logoCol.Item().Text($"Phone: {business.PhoneNumber} | Email: {business.BusinessEmail ?? "N/A"}")
                                 .FontColor(Colors.Grey.Darken2);
+                            
+                            // ← UPDATED: Practice Number before VAT
+                            if (!string.IsNullOrEmpty(business.PracticeNumber))
+                            {
+                                logoCol.Item().Text($"Practice #: {business.PracticeNumber}")
+                                    .FontColor(Colors.Grey.Darken2);
+                            }
                             
                             logoCol.Item().Text($"VAT: {business.VatNumber}")
                                 .FontColor(Colors.Grey.Darken2);
@@ -128,12 +147,12 @@ public class InvoicePdfService
                         });
                     });
 
-                    // Items Table (Qty and Rate Removed)
+                    // Items Table
                     content.Item().PaddingTop(30).Table(table =>
                     {
                         table.ColumnsDefinition(columns =>
                         {
-                            columns.RelativeColumn(6); // Description takes most space
+                            columns.RelativeColumn(6); // Description
                             columns.RelativeColumn(2); // Code
                             columns.RelativeColumn(3); // Amount
                         });
@@ -155,7 +174,7 @@ public class InvoicePdfService
                             }
                         });
 
-                        // Table Rows (with Zebra Striping)
+                        // Table Rows
                         int rowIndex = 0;
                         foreach (var item in invoice.Items)
                         {
@@ -179,8 +198,7 @@ public class InvoicePdfService
                         }
                     });
 
-                    // --- 1. TOTAL AREA (Top Right) ---
-                    // Renders immediately after the table
+                    // TOTAL AREA
                     content.Item().PaddingTop(20).AlignRight().Row(row =>
                     {
                         row.ConstantItem(250).Column(rightCol =>
@@ -204,14 +222,11 @@ public class InvoicePdfService
                         });
                     });
 
-                    // --- 2. PAYMENT INFO & NOTES (Lower Left) ---
-                    // Rendered AFTER the total area, with 100 padding to push it down visually
+                    // PAYMENT INFO & NOTES
                     content.Item().PaddingTop(100).Row(row =>
                     {
-                        // Take up roughly 2/3 of the width on the left
                         row.RelativeItem(2).PaddingRight(30).Column(leftCol =>
                         {
-                            // Prominent Bank Details Box
                             leftCol.Item().Text("PAYMENT INFORMATION")
                                 .FontSize(11)
                                 .Bold()
@@ -237,7 +252,6 @@ public class InvoicePdfService
                                         bankDetails.Item().Text($"Branch Code: {business.BranchCode}").FontSize(10).FontColor(Colors.Grey.Darken3);
                                 });
 
-                            // Notes underneath bank details
                             if (!string.IsNullOrEmpty(invoice.Notes))
                             {
                                 leftCol.Item().PaddingTop(20).Text("NOTES / TERMS")
@@ -251,12 +265,11 @@ public class InvoicePdfService
                             }
                         });
 
-                        // Empty column on the right to keep the left side contained
                         row.RelativeItem(1); 
                     });
                 });
 
-                // Footer - Thank you message and Generation Stamp
+                // Footer
                 page.Footer().PaddingTop(20).Column(footer =>
                 {
                     footer.Item().BorderTop(1).BorderColor(Colors.Grey.Lighten2).PaddingTop(10).Row(row =>

@@ -5,7 +5,7 @@ using InvoiceSystem.Services;
 using InvoiceSystem.Helpers;
 using Microsoft.OpenApi.Models;
 using dotenv.net;
-using QuestPDF.Infrastructure;  // ← Add this for QuestPDF
+using QuestPDF.Infrastructure;
 
 // Load .env file
 DotEnv.Load(options: new DotEnvOptions(envFilePaths: new[] { ".env" }));
@@ -17,7 +17,6 @@ QuestPDF.Settings.License = LicenseType.Community;
 
 // Add services
 builder.Services.AddControllers();
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -57,11 +56,28 @@ builder.Services.AddScoped<InvoiceEmailService>();
 
 builder.Services.AddHttpClient<EmailService>();
 
-// CORS
+// ========== CORS Configuration from .env ==========
+var allowedOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS")?
+    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+    .Select(o => o.Trim())
+    .ToArray() ?? new[] { 
+        "http://localhost:5173", 
+        "http://localhost:3000",
+        "https://hsholdings.co.za"
+    };
+
+Console.WriteLine($"CORS Allowed Origins: {string.Join(", ", allowedOrigins)}");
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll",
-        builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+    options.AddPolicy("AllowSpecificOrigins",
+        policy =>
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        });
 });
 
 // JWT Authentication - Get from environment variable
@@ -75,9 +91,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "InvoiceSystem",
+            ValidIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "InvoiceSystem",
             ValidateAudience = true,
-            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "InvoiceSystemClient",
+            ValidAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "InvoiceSystemClient",
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(key),
             ValidateLifetime = true,
@@ -94,7 +110,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+
+// ========== CORS Middleware - MUST BE BEFORE AUTHENTICATION ==========
+app.UseCors("AllowSpecificOrigins");
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

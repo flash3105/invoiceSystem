@@ -196,14 +196,7 @@ const Login: React.FC = () => {
             </button>
           </form>
 
-          <div className={styles.registerLink}>
-            <p>
-              Don't have an account?{' '}
-              <Link to="/register" className={styles.link}>
-                Create one here
-              </Link>
-            </p>
-          </div>
+        
         </div>
       </div>
 
