@@ -24,6 +24,9 @@ public class BusinessProfile : BaseModel
     [Column("vat_number")]
     public string VatNumber { get; set; } = string.Empty;
 
+    [Column("practice_number")]  // ← NEW: Practice Number field
+    public string PracticeNumber { get; set; } = string.Empty;
+
     [Column("account_number")]
     public string AccountNumber { get; set; } = string.Empty;
 
@@ -38,7 +41,6 @@ public class BusinessProfile : BaseModel
 
     [Column("business_email")]
     public string? BusinessEmail { get; set; }
-
 
     [Column("logo_url")]
     public string? LogoUrl { get; set; }

@@ -9,6 +9,7 @@ public class BusinessProfileDto
     public string BusinessAddress { get; set; } = string.Empty;
     public string PhoneNumber { get; set; } = string.Empty;
     public string VatNumber { get; set; } = string.Empty;
+    public string PracticeNumber { get; set; } = string.Empty; // ← NEW
     public string AccountNumber { get; set; } = string.Empty;
     public string? BankName { get; set; }
     public string? BranchCode { get; set; }
@@ -21,4 +22,3 @@ public class BusinessProfileDto
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
-

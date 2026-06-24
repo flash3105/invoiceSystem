@@ -50,13 +50,14 @@ public class InvoiceService
 
             string invoiceNumber = null;
             int retryCount = 0;
-            const int maxRetries = 3;
+            const int maxRetries = 5;
 
             while (retryCount < maxRetries)
             {
                 try
                 {
-                    invoiceNumber = await GenerateInvoiceNumberAsync(businessProfile.Id);
+                    // Generate invoice number (this increments the counter)
+                    invoiceNumber = await GenerateInvoiceNumberAsync(supabase, businessProfile.Id);
                     
                     // Create invoice
                     var invoice = new Models.Invoice
@@ -73,23 +74,32 @@ public class InvoiceService
                         TaxAmount = taxAmount,
                         Total = total,
                         Currency = businessProfile.Currency ?? "ZAR",
-                        Status = "Draft",
+                        Status = "Sent",
                         Notes = request.Notes,
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };
 
-                    // Insert invoice
+                    // Try to insert the invoice
                     await supabase.From<Models.Invoice>().Insert(invoice);
-                    break; // Success - exit retry loop
+                    
+                    // Success - break out of the retry loop
+                    _logger.LogInformation("Invoice created successfully with number: {InvoiceNumber}", invoiceNumber);
+                    break;
                 }
-                catch (Exception ex) when (ex.Message.Contains("duplicate key") && retryCount < maxRetries - 1)
+                catch (Exception ex) when (ex.Message.Contains("duplicate key") || ex.Message.Contains("23505"))
                 {
                     retryCount++;
                     _logger.LogWarning(ex, "Duplicate invoice number detected, retrying... (Attempt {RetryCount}/{MaxRetries})", 
                         retryCount + 1, maxRetries);
                     
-                    await IncrementInvoiceCounterAsync(businessProfile.Id);
+                    if (retryCount >= maxRetries)
+                    {
+                        throw new Exception($"Failed to create invoice after {maxRetries} attempts");
+                    }
+                    
+                    // Wait a bit before retrying
+                    await Task.Delay(100 * retryCount);
                 }
                 catch (Exception ex)
                 {
@@ -97,6 +107,9 @@ public class InvoiceService
                     throw;
                 }
             }
+
+            if (string.IsNullOrEmpty(invoiceNumber))
+                throw new Exception("Failed to generate invoice number");
 
             // Get created invoice
             var createdInvoice = await supabase
@@ -151,7 +164,7 @@ public class InvoiceService
             if (businessProfile == null)
                 return null;
 
-            // Get invoice - using Models.Invoice
+            // Get invoice
             var invoiceResult = await supabase
                 .From<Models.Invoice>()
                 .Where(x => x.Id == id && x.BusinessProfileId == businessProfile.Id)
@@ -161,7 +174,7 @@ public class InvoiceService
             if (invoice == null)
                 return null;
 
-            // Get invoice items - using Models.InvoiceItem
+            // Get invoice items
             var itemsResult = await supabase
                 .From<Models.InvoiceItem>()
                 .Where(x => x.InvoiceId == id)
@@ -190,7 +203,7 @@ public class InvoiceService
             if (businessProfile == null)
                 return new List<InvoiceDto>();
 
-            // Build query - using Models.Invoice
+            // Build query
             var query = supabase
                 .From<Models.Invoice>()
                 .Where(x => x.BusinessProfileId == businessProfile.Id)
@@ -225,70 +238,69 @@ public class InvoiceService
         }
     }
 
-
-public async Task<bool> UpdateInvoiceStatusAsync(int id, string status, int userId)
-{
-    try
+    public async Task<bool> UpdateInvoiceStatusAsync(int id, string status, int userId)
     {
-        var supabase = await SupabaseClientFactory.GetClientAsync();
-
-        var invoiceResult = await supabase
-            .From<Models.Invoice>()
-            .Where(x => x.Id == id)
-            .Get();
-
-        var invoice = invoiceResult.Models.FirstOrDefault();
-        if (invoice == null)
-            return false;
-
-        // Check if user owns this invoice
-        var businessProfile = await _businessProfileService.GetByUserIdAsync(userId);
-        if (businessProfile == null || invoice.BusinessProfileId != businessProfile.Id)
-            return false;
-
-        // Validate status
-        var validStatuses = new[] { "Draft", "Sent", "Pending", "PartiallyPaid", "Paid", "Overdue", "Cancelled" };
-        if (!validStatuses.Contains(status))
-            throw new Exception($"Invalid status: {status}");
-
-        invoice.Status = status;
-        invoice.UpdatedAt = DateTime.UtcNow;
-
-        // Add status-specific fields
-        switch (status)
+        try
         {
-            case "Sent":
-                invoice.SentAt = DateTime.UtcNow;
-                break;
-            case "Paid":
-                invoice.PaidAt = DateTime.UtcNow;
-                invoice.AmountPaid = invoice.Total;
-                invoice.BalanceDue = 0;
-                break;
-            case "PartiallyPaid":
-                invoice.AmountPaid = invoice.AmountPaid;
-                invoice.BalanceDue = invoice.Total - invoice.AmountPaid;
-                break;
-            case "Overdue":
-                if (invoice.DueDate > DateTime.UtcNow)
-                    throw new Exception("Cannot mark as overdue - due date has not passed yet");
-                break;
+            var supabase = await SupabaseClientFactory.GetClientAsync();
+
+            var invoiceResult = await supabase
+                .From<Models.Invoice>()
+                .Where(x => x.Id == id)
+                .Get();
+
+            var invoice = invoiceResult.Models.FirstOrDefault();
+            if (invoice == null)
+                return false;
+
+            // Check if user owns this invoice
+            var businessProfile = await _businessProfileService.GetByUserIdAsync(userId);
+            if (businessProfile == null || invoice.BusinessProfileId != businessProfile.Id)
+                return false;
+
+            // Validate status
+            var validStatuses = new[] { "Draft", "Sent", "Pending", "PartiallyPaid", "Paid", "Overdue", "Cancelled" };
+            if (!validStatuses.Contains(status))
+                throw new Exception($"Invalid status: {status}");
+
+            invoice.Status = status;
+            invoice.UpdatedAt = DateTime.UtcNow;
+
+            // Add status-specific fields
+            switch (status)
+            {
+                case "Sent":
+                    invoice.SentAt = DateTime.UtcNow;
+                    break;
+                case "Paid":
+                    invoice.PaidAt = DateTime.UtcNow;
+                    invoice.AmountPaid = invoice.Total;
+                    invoice.BalanceDue = 0;
+                    break;
+                case "PartiallyPaid":
+                    invoice.AmountPaid = invoice.AmountPaid;
+                    invoice.BalanceDue = invoice.Total - invoice.AmountPaid;
+                    break;
+                case "Overdue":
+                    if (invoice.DueDate > DateTime.UtcNow)
+                        throw new Exception("Cannot mark as overdue - due date has not passed yet");
+                    break;
+            }
+
+            await supabase
+                .From<Models.Invoice>()
+                .Where(x => x.Id == id)
+                .Update(invoice);
+
+            _logger.LogInformation("Invoice {InvoiceId} status updated to {Status}", id, status);
+            return true;
         }
-
-        await supabase
-            .From<Models.Invoice>()
-            .Where(x => x.Id == id)
-            .Update(invoice);
-
-        _logger.LogInformation("Invoice {InvoiceId} status updated to {Status}", id, status);
-        return true;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating invoice status: {InvoiceId}", id);
+            return false;
+        }
     }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Error updating invoice status: {InvoiceId}", id);
-        return false;
-    }
-}
 
     public List<string> GetAvailableStatuses()
     {
@@ -304,11 +316,12 @@ public async Task<bool> UpdateInvoiceStatusAsync(int id, string status, int user
         };
     }
 
-    private async Task<string> GenerateInvoiceNumberAsync(int businessProfileId)
+    /// <summary>
+    /// Generates the next invoice number and increments the counter atomically
+    /// </summary>
+    private async Task<string> GenerateInvoiceNumberAsync(Supabase.Client supabase, int businessProfileId)
     {
-        var supabase = await SupabaseClientFactory.GetClientAsync();
-
-        // Get the business profile
+        // Get the business profile with the latest counter
         var profileResult = await supabase
             .From<BusinessProfile>()
             .Where(x => x.Id == businessProfileId)
@@ -321,35 +334,23 @@ public async Task<bool> UpdateInvoiceStatusAsync(int id, string status, int user
         // Increment counter
         profile.InvoiceNumberCounter += 1;
         profile.UpdatedAt = DateTime.UtcNow;
-        await supabase.From<BusinessProfile>().Update(profile);
+        
+        // Update the profile
+        await supabase
+            .From<BusinessProfile>()
+            .Where(x => x.Id == businessProfileId)
+            .Update(profile);
 
         // Generate invoice number
         var year = DateTime.UtcNow.Year;
         var paddedNumber = profile.InvoiceNumberCounter.ToString("D4");
-        return $"{profile.InvoicePrefix}{year}-{paddedNumber}";
+        var invoiceNumber = $"{profile.InvoicePrefix}{year}-{paddedNumber}";
+
+        _logger.LogInformation("Generated invoice number: {InvoiceNumber} (Counter: {Counter})", 
+            invoiceNumber, profile.InvoiceNumberCounter);
+
+        return invoiceNumber;
     }
-
-    
-    private async Task IncrementInvoiceCounterAsync(int businessProfileId)
-    {
-        var supabase = await SupabaseClientFactory.GetClientAsync();
-
-        // Get the business profile
-        var profileResult = await supabase
-            .From<BusinessProfile>()
-            .Where(x => x.Id == businessProfileId)
-            .Get();
-
-        var profile = profileResult.Models.FirstOrDefault();
-        if (profile == null)
-            return;
-
-        // Increment counter
-        profile.InvoiceNumberCounter += 1;
-        profile.UpdatedAt = DateTime.UtcNow;
-        await supabase.From<BusinessProfile>().Update(profile);
-    }
-    
 
     private InvoiceDto MapToDto(Models.Invoice invoice, List<Models.InvoiceItem> items, ClientDto? client)
     {

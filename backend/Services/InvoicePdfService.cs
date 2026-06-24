@@ -60,6 +60,13 @@ public class InvoicePdfService
                             logoCol.Item().Text($"Phone: {business.PhoneNumber} | Email: {business.BusinessEmail ?? "N/A"}")
                                 .FontColor(Colors.Grey.Darken2);
                             
+                            // ← UPDATED: Practice Number before VAT
+                            if (!string.IsNullOrEmpty(business.PracticeNumber))
+                            {
+                                logoCol.Item().Text($"Practice #: {business.PracticeNumber}")
+                                    .FontColor(Colors.Grey.Darken2);
+                            }
+                            
                             logoCol.Item().Text($"VAT: {business.VatNumber}")
                                 .FontColor(Colors.Grey.Darken2);
                         });

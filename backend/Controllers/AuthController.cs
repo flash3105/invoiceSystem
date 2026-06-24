@@ -106,24 +106,96 @@ public class AuthController : ControllerBase
         return Ok(new { message = result.Message });
     }
 
-    [HttpGet("business-profile")]
-    public async Task<IActionResult> GetBusinessProfile()
+    // AuthController.cs - Update the mapping in GetBusinessProfile
+[HttpGet("business-profile")]
+public async Task<IActionResult> GetBusinessProfile()
+{
+    try
     {
-        try
+        var email = User.Identity?.Name;
+        if (string.IsNullOrEmpty(email))
         {
-            var email = User.Identity?.Name;
-            if (string.IsNullOrEmpty(email))
-            {
-                return Unauthorized(new { message = "User not authenticated" });
-            }
+            return Unauthorized(new { message = "User not authenticated" });
+        }
 
-            var profile = await _authService.GetBusinessProfileByEmailAsync(email);
-            if (profile == null)
-            {
-                return NotFound(new { message = "Business profile not found" });
-            }
+        var profile = await _authService.GetBusinessProfileByEmailAsync(email);
+        if (profile == null)
+        {
+            return NotFound(new { message = "Business profile not found" });
+        }
 
-            // Map to DTO
+        // Map to DTO with PracticeNumber
+        var dto = new BusinessProfileDto
+        {
+            Id = profile.Id,
+            UserId = profile.UserId,
+            BusinessName = profile.BusinessName,
+            BusinessAddress = profile.BusinessAddress,
+            PhoneNumber = profile.PhoneNumber,
+            VatNumber = profile.VatNumber,
+            PracticeNumber = profile.PracticeNumber, // ← NEW
+            AccountNumber = profile.AccountNumber,
+            BankName = profile.BankName,
+            BranchCode = profile.BranchCode,
+            AccountHolderName = profile.AccountHolderName,
+            BusinessEmail = profile.BusinessEmail,
+            LogoUrl = profile.LogoUrl,
+            InvoicePrefix = profile.InvoicePrefix,
+            InvoiceNumberCounter = profile.InvoiceNumberCounter,
+            Currency = profile.Currency,
+            CreatedAt = profile.CreatedAt,
+            UpdatedAt = profile.UpdatedAt
+        };
+
+        return Ok(dto);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error retrieving business profile");
+        return StatusCode(500, new { message = "An error occurred while retrieving the business profile" });
+    }
+}
+
+// AuthController.cs - Update the mapping in UpdateBusinessProfile
+[HttpPut("business-profile")]
+public async Task<IActionResult> UpdateBusinessProfile([FromBody] UpdateBusinessProfileDto updateDto)
+{
+    try
+    {
+        var email = User.Identity?.Name;
+        if (string.IsNullOrEmpty(email))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
+        // Map DTO to entity with PracticeNumber
+        var updatedProfile = new BusinessProfile
+        {
+            BusinessName = updateDto.BusinessName,
+            BusinessAddress = updateDto.BusinessAddress,
+            PhoneNumber = updateDto.PhoneNumber,
+            VatNumber = updateDto.VatNumber,
+            PracticeNumber = updateDto.PracticeNumber, // ← NEW
+            AccountNumber = updateDto.AccountNumber,
+            BankName = updateDto.BankName,
+            BranchCode = updateDto.BranchCode,
+            AccountHolderName = updateDto.AccountHolderName,
+            BusinessEmail = updateDto.BusinessEmail,
+            LogoUrl = updateDto.LogoUrl,
+            Currency = updateDto.Currency
+        };
+
+        var result = await _authService.UpdateBusinessProfileAsync(email, updatedProfile);
+        
+        if (!result.Success)
+        {
+            return BadRequest(new { message = result.Message });
+        }
+
+        // Get the updated profile and return as DTO
+        var profile = await _authService.GetBusinessProfileByEmailAsync(email);
+        if (profile != null)
+        {
             var dto = new BusinessProfileDto
             {
                 Id = profile.Id,
@@ -132,6 +204,7 @@ public class AuthController : ControllerBase
                 BusinessAddress = profile.BusinessAddress,
                 PhoneNumber = profile.PhoneNumber,
                 VatNumber = profile.VatNumber,
+                PracticeNumber = profile.PracticeNumber, // ← NEW
                 AccountNumber = profile.AccountNumber,
                 BankName = profile.BankName,
                 BranchCode = profile.BranchCode,
@@ -144,86 +217,17 @@ public class AuthController : ControllerBase
                 CreatedAt = profile.CreatedAt,
                 UpdatedAt = profile.UpdatedAt
             };
-
             return Ok(dto);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving business profile");
-            return StatusCode(500, new { message = "An error occurred while retrieving the business profile" });
-        }
-    }
 
-    [HttpPut("business-profile")]
-    public async Task<IActionResult> UpdateBusinessProfile([FromBody] UpdateBusinessProfileDto updateDto)
+        return Ok(new { message = result.Message });
+    }
+    catch (Exception ex)
     {
-        try
-        {
-            var email = User.Identity?.Name;
-            if (string.IsNullOrEmpty(email))
-            {
-                return Unauthorized(new { message = "User not authenticated" });
-            }
-
-            // Map DTO to entity
-            var updatedProfile = new BusinessProfile
-            {
-                BusinessName = updateDto.BusinessName,
-                BusinessAddress = updateDto.BusinessAddress,
-                PhoneNumber = updateDto.PhoneNumber,
-                VatNumber = updateDto.VatNumber,
-                AccountNumber = updateDto.AccountNumber,
-                BankName = updateDto.BankName,
-                BranchCode = updateDto.BranchCode,
-                AccountHolderName = updateDto.AccountHolderName,
-                BusinessEmail = updateDto.BusinessEmail,
-                LogoUrl = updateDto.LogoUrl,
-                Currency = updateDto.Currency
-            };
-
-            var result = await _authService.UpdateBusinessProfileAsync(email, updatedProfile);
-            
-            if (!result.Success)
-            {
-                return BadRequest(new { message = result.Message });
-            }
-
-            // Get the updated profile and return as DTO
-            var profile = await _authService.GetBusinessProfileByEmailAsync(email);
-            if (profile != null)
-            {
-                var dto = new BusinessProfileDto
-                {
-                    Id = profile.Id,
-                    UserId = profile.UserId,
-                    BusinessName = profile.BusinessName,
-                    BusinessAddress = profile.BusinessAddress,
-                    PhoneNumber = profile.PhoneNumber,
-                    VatNumber = profile.VatNumber,
-                    AccountNumber = profile.AccountNumber,
-                    BankName = profile.BankName,
-                    BranchCode = profile.BranchCode,
-                    AccountHolderName = profile.AccountHolderName,
-                    BusinessEmail = profile.BusinessEmail,
-                    LogoUrl = profile.LogoUrl,
-                    InvoicePrefix = profile.InvoicePrefix,
-                    InvoiceNumberCounter = profile.InvoiceNumberCounter,
-                    Currency = profile.Currency,
-                    CreatedAt = profile.CreatedAt,
-                    UpdatedAt = profile.UpdatedAt
-                };
-                return Ok(dto);
-            }
-
-            return Ok(new { message = result.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating business profile");
-            return StatusCode(500, new { message = "An error occurred while updating the business profile" });
-        }
+        _logger.LogError(ex, "Error updating business profile");
+        return StatusCode(500, new { message = "An error occurred while updating the business profile" });
     }
-
+}
     [HttpGet("next-invoice-number")]
     public async Task<IActionResult> GetNextInvoiceNumber()
     {
