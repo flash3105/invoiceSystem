@@ -11,15 +11,18 @@ public class InvoiceService
     private readonly ILogger<InvoiceService> _logger;
     private readonly ClientService _clientService;
     private readonly BusinessProfileService _businessProfileService;
+    private readonly EmailService _emailService;
 
     public InvoiceService(
         ILogger<InvoiceService> logger,
         ClientService clientService,
-        BusinessProfileService businessProfileService)
+        BusinessProfileService businessProfileService,
+        EmailService emailService)
     {
         _logger = logger;
         _clientService = clientService;
         _businessProfileService = businessProfileService;
+        _emailService = emailService;
     }
 
     public async Task<InvoiceDto> CreateInvoiceAsync(CreateInvoiceRequest request, int userId)

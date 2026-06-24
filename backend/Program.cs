@@ -51,7 +51,11 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ClientService>();
 builder.Services.AddScoped<BusinessProfileService>();
 builder.Services.AddScoped<InvoiceService>();
-builder.Services.AddScoped<InvoicePdfService>();  // ← Make sure this is registered
+builder.Services.AddScoped<InvoicePdfService>(); 
+builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<InvoiceEmailService>();
+
+builder.Services.AddHttpClient<EmailService>();
 
 // CORS
 builder.Services.AddCors(options =>
