@@ -1,4 +1,5 @@
 /* src/Components/InvoiceStatusUpdate.module.css */
+
 .modalOverlay {
   position: fixed;
   top: 0;
@@ -10,8 +11,9 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 20px;
+  padding: 16px;
   animation: fadeIn 0.2s ease;
+  backdrop-filter: blur(4px);
 }
 
 @keyframes fadeIn {
@@ -35,6 +37,24 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* Custom Scrollbar for Modal */
+.modal::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.modal::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 .modalHeader {
   display: flex;
   justify-content: space-between;
@@ -43,6 +63,9 @@
   border-bottom: 1px solid #e2e8f0;
   background: #f7fafc;
   border-radius: 12px 12px 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .modalHeader h3 {
@@ -50,6 +73,15 @@
   font-size: 18px;
   font-weight: 600;
   color: #1a202c;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modalHeader h3 span {
+  font-size: 14px;
+  font-weight: 400;
+  color: #718096;
 }
 
 .closeButton {
@@ -60,6 +92,9 @@
   padding: 4px;
   border-radius: 4px;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .closeButton:hover:not(:disabled) {
@@ -78,12 +113,26 @@
 
 .invoiceInfo {
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .invoiceLabel {
   font-size: 14px;
   font-weight: 600;
   color: #3182ce;
+}
+
+.invoiceNumber {
+  font-size: 14px;
+  color: #4a5568;
+  background: #edf2f7;
+  padding: 2px 12px;
+  border-radius: 12px;
+  font-weight: 500;
 }
 
 .errorAlert {
@@ -105,6 +154,7 @@
   font-size: 18px;
   cursor: pointer;
   margin-left: auto;
+  padding: 0 4px;
 }
 
 .successAlert {
@@ -128,6 +178,7 @@
   border-radius: 6px;
   margin-bottom: 20px;
   border: 1px solid #e2e8f0;
+  flex-wrap: wrap;
 }
 
 .currentStatus label {
@@ -160,7 +211,7 @@
 
 .statusGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 8px;
 }
 
@@ -169,7 +220,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid #ddd;
+  border: 2px solid #e2e8f0;
   border-radius: 8px;
   background: white;
   cursor: pointer;
@@ -186,24 +237,30 @@
 }
 
 .statusOption.selected {
-  border-width: 2px !important;
+  border-color: #3182ce !important;
+  background: #ebf8ff;
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(49, 130, 206, 0.2);
 }
 
 .statusOption.current {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: not-allowed;
   border-style: dashed;
 }
 
 .statusOption:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .statusIcon {
   font-size: 16px;
+  flex-shrink: 0;
+}
+
+.statusLabel {
+  flex: 1;
 }
 
 .currentBadge {
@@ -216,6 +273,7 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 .statusLegend {
@@ -251,6 +309,9 @@
   border-top: 1px solid #e2e8f0;
   background: #f7fafc;
   border-radius: 0 0 12px 12px;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
 }
 
 .cancelButton {
@@ -313,22 +374,423 @@
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 640px) {
-  .statusGrid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
+/* Tablets and Small Screens */
+@media (max-width: 768px) {
+  .modalOverlay {
+    padding: 12px;
   }
-  
+
   .modal {
-    margin: 10px;
+    max-width: 100%;
+    margin: 0;
     max-height: 95vh;
+    border-radius: 12px;
   }
-  
-  .modalHeader,
+
+  .modalHeader {
+    padding: 14px 18px;
+  }
+
+  .modalHeader h3 {
+    font-size: 16px;
+  }
+
+  .modalHeader h3 span {
+    font-size: 13px;
+  }
+
+  .modalBody {
+    padding: 18px;
+  }
+
+  .modalFooter {
+    padding: 14px 18px;
+  }
+
+  .statusGrid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 6px;
+  }
+
+  .statusOption {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .statusIcon {
+    font-size: 14px;
+  }
+
+  .invoiceInfo {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+/* Mobile Phones */
+@media (max-width: 480px) {
+  .modalOverlay {
+    padding: 8px;
+    align-items: flex-end;
+  }
+
+  .modal {
+    max-height: 98vh;
+    border-radius: 12px 12px 0 0;
+    animation: slideUpMobile 0.3s ease;
+  }
+
+  @keyframes slideUpMobile {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modalHeader {
+    padding: 12px 16px;
+    min-height: 56px;
+  }
+
+  .modalHeader h3 {
+    font-size: 15px;
+  }
+
+  .modalHeader h3 span {
+    font-size: 12px;
+  }
+
+  .closeButton {
+    padding: 6px;
+  }
+
+  .closeButton svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .modalBody {
+    padding: 14px 16px;
+  }
+
+  .invoiceInfo {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .invoiceLabel {
+    font-size: 13px;
+  }
+
+  .invoiceNumber {
+    font-size: 13px;
+    padding: 2px 10px;
+  }
+
+  .currentStatus {
+    padding: 10px 14px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .currentStatus label {
+    font-size: 13px;
+  }
+
+  .statusBadge {
+    font-size: 12px;
+    padding: 3px 12px;
+  }
+
+  .formGroup {
+    margin-bottom: 16px;
+  }
+
+  .formGroup label {
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+  .statusGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .statusOption {
+    padding: 8px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+
+  .statusOption:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .statusOption.selected {
+    transform: none;
+  }
+
+  .statusIcon {
+    font-size: 14px;
+  }
+
+  .currentBadge {
+    font-size: 7px;
+    padding: 1px 6px;
+  }
+
+  .statusLegend {
+    padding: 10px 14px;
+    margin-top: 12px;
+  }
+
+  .legendItem {
+    font-size: 11px;
+  }
+
+  .legendDot {
+    width: 12px;
+    height: 12px;
+  }
+
   .modalFooter {
     padding: 12px 16px;
+    flex-direction: column-reverse;
+    gap: 8px;
   }
-  
+
+  .cancelButton {
+    padding: 10px 16px;
+    font-size: 14px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .updateButton {
+    padding: 10px 16px;
+    font-size: 14px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .errorAlert,
+  .successAlert {
+    padding: 10px 14px;
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+
+  .errorAlert button {
+    font-size: 16px;
+  }
+}
+
+/* Very Small Phones */
+@media (max-width: 360px) {
+  .modalOverlay {
+    padding: 4px;
+  }
+
+  .modalHeader {
+    padding: 10px 14px;
+  }
+
+  .modalHeader h3 {
+    font-size: 14px;
+  }
+
   .modalBody {
-    padding: 16px;
+    padding: 12px 14px;
+  }
+
+  .modalFooter {
+    padding: 10px 14px;
+  }
+
+  .statusGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+
+  .statusOption {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .statusIcon {
+    font-size: 12px;
+  }
+
+  .statusBadge {
+    font-size: 11px;
+    padding: 2px 10px;
+  }
+
+  .currentStatus {
+    padding: 8px 12px;
+  }
+
+  .currentStatus label {
+    font-size: 12px;
+  }
+}
+
+/* Landscape Mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .modal {
+    max-height: 95vh;
+  }
+
+  .modalBody {
+    padding: 12px 16px;
+  }
+
+  .statusGrid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 4px;
+  }
+
+  .statusOption {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .currentStatus {
+    padding: 8px 12px;
+    margin-bottom: 12px;
+  }
+
+  .formGroup {
+    margin-bottom: 12px;
+  }
+
+  .modalHeader {
+    padding: 10px 16px;
+    min-height: 44px;
+  }
+
+  .modalFooter {
+    padding: 10px 16px;
+  }
+}
+
+/* ============================================
+   DARK MODE SUPPORT
+   ============================================ */
+@media (prefers-color-scheme: dark) {
+  .modal {
+    background: #1a202c;
+  }
+
+  .modalHeader {
+    background: #2d3748;
+    border-bottom-color: #4a5568;
+  }
+
+  .modalHeader h3 {
+    color: #f7fafc;
+  }
+
+  .modalHeader h3 span {
+    color: #a0aec0;
+  }
+
+  .closeButton {
+    color: #a0aec0;
+  }
+
+  .closeButton:hover:not(:disabled) {
+    background: #4a5568;
+    color: #e2e8f0;
+  }
+
+  .modalFooter {
+    background: #2d3748;
+    border-top-color: #4a5568;
+  }
+
+  .cancelButton {
+    background: #4a5568;
+    color: #e2e8f0;
+  }
+
+  .cancelButton:hover:not(:disabled) {
+    background: #5a6a7e;
+  }
+
+  .currentStatus {
+    background: #2d3748;
+    border-color: #4a5568;
+  }
+
+  .currentStatus label {
+    color: #e2e8f0;
+  }
+
+  .statusOption {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+
+  .statusOption:hover:not(:disabled) {
+    border-color: #718096;
+  }
+
+  .statusOption.selected {
+    border-color: #3182ce !important;
+    background: #2b4a6b;
+  }
+
+  .statusOption.current {
+    opacity: 0.4;
+  }
+
+  .statusLegend {
+    background: #2d3748;
+    border-color: #4a5568;
+  }
+
+  .legendItem {
+    color: #e2e8f0;
+  }
+
+  .invoiceNumber {
+    background: #4a5568;
+    color: #e2e8f0;
+  }
+
+  .invoiceLabel {
+    color: #63b3ed;
+  }
+
+  .errorAlert {
+    background: #742a2a;
+    color: #feb2b2;
+  }
+
+  .errorAlert button {
+    color: #feb2b2;
+  }
+
+  .successAlert {
+    background: #22543d;
+    color: #9ae6b4;
+  }
+
+  .formGroup label {
+    color: #e2e8f0;
+  }
+
+  .modal::-webkit-scrollbar-thumb {
+    background: #4a5568;
+  }
+
+  .modal::-webkit-scrollbar-thumb:hover {
+    background: #5a6a7e;
   }
 }

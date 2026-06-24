@@ -18,13 +18,13 @@ interface Invoice {
 }
 
 const STATUS_CONFIG = {
-  'Draft': { icon: '📄', color: '#6c757d' },
-  'Sent': { icon: '✉️', color: '#0d6efd' },
-  'Pending': { icon: '⏳', color: '#ffc107' },
-  'PartiallyPaid': { icon: '💰', color: '#fd7e14' },
-  'Paid': { icon: '✅', color: '#198754' },
-  'Overdue': { icon: '⚠️', color: '#dc3545' },
-  'Cancelled': { icon: '❌', color: '#dc3545' },
+  'Draft': { icon: '', color: '#6c757d' },
+  'Sent': { icon: '', color: '#0d6efd' },
+  'Pending': { icon: '', color: '#ffc107' },
+  'PartiallyPaid': { icon: '', color: '#fd7e14' },
+  'Paid': { icon: '', color: '#198754' },
+  'Overdue': { icon: '', color: '#dc3545' },
+  'Cancelled': { icon: '', color: '#dc3545' },
 };
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -234,13 +234,13 @@ export const InvoiceTable: React.FC = () => {
               className={styles.filterSelect}
             >
               <option value="all">All Status</option>
-              <option value="Draft">📄 Draft</option>
-              <option value="Sent">✉️ Sent</option>
-              <option value="Pending">⏳ Pending</option>
-              <option value="PartiallyPaid">💰 Partially Paid</option>
-              <option value="Paid">✅ Paid</option>
-              <option value="Overdue">⚠️ Overdue</option>
-              <option value="Cancelled">❌ Cancelled</option>
+              <option value="Draft"> Draft</option>
+              <option value="Sent">Sent</option>
+              <option value="Pending"> Pending</option>
+              <option value="PartiallyPaid"> Partially Paid</option>
+              <option value="Paid"> Paid</option>
+              <option value="Overdue"> Overdue</option>
+              <option value="Cancelled"> Cancelled</option>
             </select>
           </div>
           <button onClick={loadInvoices} className={styles.refreshButton}>
