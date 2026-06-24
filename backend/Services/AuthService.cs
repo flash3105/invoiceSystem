@@ -352,6 +352,145 @@ public class AuthService
         }
     }
 
+    public async Task<string?> GeneratePasswordResetTokenAsync(string email)
+    {
+        try
+        {
+            var supabase = await SupabaseClientFactory.GetClientAsync();
+
+            // Find user by email
+            var userResult = await supabase
+                .From<User>()
+                .Filter("email", Operator.Equals, email.ToLower())
+                .Get();
+
+            if (userResult.Models.Count == 0)
+                return null;
+
+            var user = userResult.Models[0];
+
+            // Generate a secure random token
+            var tokenBytes = new byte[32];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(tokenBytes);
+            }
+            var token = Convert.ToBase64String(tokenBytes);
+            
+            // Hash the token for storage (security)
+            var hashedToken = HashToken(token);
+            
+            // Store the token with expiration (24 hours)
+            var resetToken = new PasswordResetToken
+            {
+                UserId = user.Id,
+                Token = hashedToken,
+                ExpiresAt = DateTime.UtcNow.AddHours(24),
+                CreatedAt = DateTime.UtcNow,
+                IsUsed = false
+            };
+
+            await supabase.From<PasswordResetToken>().Insert(resetToken);
+
+            return token; // Return the raw token (not hashed) for the email link
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating password reset token for: {Email}", email);
+            return null;
+        }
+    }
+
+    public async Task<(bool Success, string? Message)> ResetPasswordAsync(string token, string newPassword)
+    {
+        try
+        {
+            var supabase = await SupabaseClientFactory.GetClientAsync();
+
+            // Hash the token to find it in the database
+            var hashedToken = HashToken(token);
+
+            // Find the token record
+            var tokenResult = await supabase
+                .From<PasswordResetToken>()
+                .Filter("token", Operator.Equals, hashedToken)
+                .Get();
+
+            var resetToken = tokenResult.Models.FirstOrDefault();
+            
+            if (resetToken == null)
+                return (false, "Invalid or expired reset token");
+
+            if (resetToken.IsUsed)
+                return (false, "This reset token has already been used");
+
+            if (resetToken.ExpiresAt < DateTime.UtcNow)
+                return (false, "Reset token has expired. Please request a new one.");
+
+            // Mark token as used
+            resetToken.IsUsed = true;
+            await supabase.From<PasswordResetToken>().Update(resetToken);
+
+            // Get the user
+            var userResult = await supabase
+                .From<User>()
+                .Filter("id", Operator.Equals, resetToken.UserId)
+                .Get();
+
+            if (userResult.Models.Count == 0)
+                return (false, "User not found");
+
+            var user = userResult.Models[0];
+
+            // Update password
+            var newSalt = GenerateSalt();
+            user.PasswordHash = HashPassword(newPassword, newSalt);
+            user.PasswordSalt = newSalt;
+            await supabase.From<User>().Update(user);
+
+            _logger.LogInformation("Password reset successfully for user ID: {UserId}", user.Id);
+            return (true, "Password reset successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting password");
+            return (false, "An error occurred while resetting password");
+        }
+    }
+
+    public async Task<bool> IsResetTokenValidAsync(string token)
+    {
+        try
+        {
+            var supabase = await SupabaseClientFactory.GetClientAsync();
+            var hashedToken = HashToken(token);
+
+            var tokenResult = await supabase
+                .From<PasswordResetToken>()
+                .Filter("token", Operator.Equals, hashedToken)
+                .Get();
+
+            var resetToken = tokenResult.Models.FirstOrDefault();
+            
+            if (resetToken == null)
+                return false;
+
+            if (resetToken.IsUsed)
+                return false;
+
+            if (resetToken.ExpiresAt < DateTime.UtcNow)
+                return false;
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating reset token");
+            return false;
+        }
+    }
+
+
     private string GenerateJwtToken(User user)
     {
         // Read JWT secret from environment variable (loaded from .env)
@@ -399,6 +538,14 @@ public class AuthService
         using var sha256 = SHA256.Create();
         var combined = password + salt;
         var bytes = Encoding.UTF8.GetBytes(combined);
+        var hash = sha256.ComputeHash(bytes);
+        return Convert.ToBase64String(hash);
+    }
+
+    private string HashToken(string token)
+    {
+        using var sha256 = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(token);
         var hash = sha256.ComputeHash(bytes);
         return Convert.ToBase64String(hash);
     }
