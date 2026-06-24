@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using InvoiceSystem.Services;
 using InvoiceSystem.Models;
+using InvoiceSystem.Models.DTOs;
 
 namespace InvoiceSystem.Controllers;
 
@@ -103,62 +104,151 @@ public class AuthController : ControllerBase
     [HttpGet("business-profile")]
     public async Task<IActionResult> GetBusinessProfile()
     {
-        var email = User.Identity?.Name;
-        if (string.IsNullOrEmpty(email))
+        try
         {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+            var email = User.Identity?.Name;
+            if (string.IsNullOrEmpty(email))
+            {
+                return Unauthorized(new { message = "User not authenticated" });
+            }
 
-        var profile = await _authService.GetBusinessProfileByEmailAsync(email);
-        if (profile == null)
+            var profile = await _authService.GetBusinessProfileByEmailAsync(email);
+            if (profile == null)
+            {
+                return NotFound(new { message = "Business profile not found" });
+            }
+
+            // Map to DTO
+            var dto = new BusinessProfileDto
+            {
+                Id = profile.Id,
+                UserId = profile.UserId,
+                BusinessName = profile.BusinessName,
+                BusinessAddress = profile.BusinessAddress,
+                PhoneNumber = profile.PhoneNumber,
+                VatNumber = profile.VatNumber,
+                AccountNumber = profile.AccountNumber,
+                BankName = profile.BankName,
+                BranchCode = profile.BranchCode,
+                AccountHolderName = profile.AccountHolderName,
+                BusinessEmail = profile.BusinessEmail,
+                LogoUrl = profile.LogoUrl,
+                InvoicePrefix = profile.InvoicePrefix,
+                InvoiceNumberCounter = profile.InvoiceNumberCounter,
+                Currency = profile.Currency,
+                CreatedAt = profile.CreatedAt,
+                UpdatedAt = profile.UpdatedAt
+            };
+
+            return Ok(dto);
+        }
+        catch (Exception ex)
         {
-            return NotFound(new { message = "Business profile not found" });
+            _logger.LogError(ex, "Error retrieving business profile");
+            return StatusCode(500, new { message = "An error occurred while retrieving the business profile" });
         }
-
-        return Ok(profile);
     }
 
     [HttpPut("business-profile")]
-    public async Task<IActionResult> UpdateBusinessProfile([FromBody] BusinessProfile updatedProfile)
+    public async Task<IActionResult> UpdateBusinessProfile([FromBody] UpdateBusinessProfileDto updateDto)
     {
-        var email = User.Identity?.Name;
-        if (string.IsNullOrEmpty(email))
+        try
         {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+            var email = User.Identity?.Name;
+            if (string.IsNullOrEmpty(email))
+            {
+                return Unauthorized(new { message = "User not authenticated" });
+            }
 
-        var result = await _authService.UpdateBusinessProfileAsync(email, updatedProfile);
-        
-        if (!result.Success)
+            // Map DTO to entity
+            var updatedProfile = new BusinessProfile
+            {
+                BusinessName = updateDto.BusinessName,
+                BusinessAddress = updateDto.BusinessAddress,
+                PhoneNumber = updateDto.PhoneNumber,
+                VatNumber = updateDto.VatNumber,
+                AccountNumber = updateDto.AccountNumber,
+                BankName = updateDto.BankName,
+                BranchCode = updateDto.BranchCode,
+                AccountHolderName = updateDto.AccountHolderName,
+                BusinessEmail = updateDto.BusinessEmail,
+                LogoUrl = updateDto.LogoUrl,
+                Currency = updateDto.Currency
+            };
+
+            var result = await _authService.UpdateBusinessProfileAsync(email, updatedProfile);
+            
+            if (!result.Success)
+            {
+                return BadRequest(new { message = result.Message });
+            }
+
+            // Get the updated profile and return as DTO
+            var profile = await _authService.GetBusinessProfileByEmailAsync(email);
+            if (profile != null)
+            {
+                var dto = new BusinessProfileDto
+                {
+                    Id = profile.Id,
+                    UserId = profile.UserId,
+                    BusinessName = profile.BusinessName,
+                    BusinessAddress = profile.BusinessAddress,
+                    PhoneNumber = profile.PhoneNumber,
+                    VatNumber = profile.VatNumber,
+                    AccountNumber = profile.AccountNumber,
+                    BankName = profile.BankName,
+                    BranchCode = profile.BranchCode,
+                    AccountHolderName = profile.AccountHolderName,
+                    BusinessEmail = profile.BusinessEmail,
+                    LogoUrl = profile.LogoUrl,
+                    InvoicePrefix = profile.InvoicePrefix,
+                    InvoiceNumberCounter = profile.InvoiceNumberCounter,
+                    Currency = profile.Currency,
+                    CreatedAt = profile.CreatedAt,
+                    UpdatedAt = profile.UpdatedAt
+                };
+                return Ok(dto);
+            }
+
+            return Ok(new { message = result.Message });
+        }
+        catch (Exception ex)
         {
-            return BadRequest(new { message = result.Message });
+            _logger.LogError(ex, "Error updating business profile");
+            return StatusCode(500, new { message = "An error occurred while updating the business profile" });
         }
-
-        return Ok(new { message = result.Message });
     }
 
     [HttpGet("next-invoice-number")]
     public async Task<IActionResult> GetNextInvoiceNumber()
     {
-        var email = User.Identity?.Name;
-        if (string.IsNullOrEmpty(email))
+        try
         {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+            var email = User.Identity?.Name;
+            if (string.IsNullOrEmpty(email))
+            {
+                return Unauthorized(new { message = "User not authenticated" });
+            }
 
-        var profile = await _authService.GetBusinessProfileByEmailAsync(email);
-        if (profile == null)
+            var profile = await _authService.GetBusinessProfileByEmailAsync(email);
+            if (profile == null)
+            {
+                return NotFound(new { message = "Business profile not found" });
+            }
+
+            var invoiceNumber = await _authService.GetNextInvoiceNumberAsync(profile.Id);
+            if (invoiceNumber == null)
+            {
+                return BadRequest(new { message = "Failed to generate invoice number" });
+            }
+
+            return Ok(new { invoiceNumber });
+        }
+        catch (Exception ex)
         {
-            return NotFound(new { message = "Business profile not found" });
+            _logger.LogError(ex, "Error generating next invoice number");
+            return StatusCode(500, new { message = "An error occurred while generating the invoice number" });
         }
-
-        var invoiceNumber = await _authService.GetNextInvoiceNumberAsync(profile.Id);
-        if (invoiceNumber == null)
-        {
-            return BadRequest(new { message = "Failed to generate invoice number" });
-        }
-
-        return Ok(new { invoiceNumber });
     }
 }
 
