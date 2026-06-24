@@ -52,12 +52,47 @@
   flex: 1;
 }
 
+.errorAlert .closeAlert {
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 4px;
+}
+
+.successAlert {
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  color: #065f46;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.successAlert span {
+  flex: 1;
+}
+
+.successAlert .closeAlert {
+  background: none;
+  border: none;
+  color: #065f46;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 4px;
+}
+
 /* Form */
 .generatorForm {
   background: white;
   border-radius: var(--radius, 12px);
   padding: 24px 16px;
-  margin:0;
+  margin: 0;
   box-shadow: var(--shadow, 0 1px 3px rgba(0, 0, 0, 0.1));
   border: 1px solid var(--gray-200, #e5e7eb);
   width: 100%;
@@ -71,14 +106,6 @@
   margin-bottom: 16px;
   margin-left: 0;
   padding-left: 0;
-  
-}
-
-@media (max-width: 768px) {
-  .formGrid {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
 }
 
 /* Form Section */
@@ -161,11 +188,15 @@
   gap: 14px;
 }
 
-@media (max-width: 640px) {
-  .formRow {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
+/* Select Wrapper */
+.selectWrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.selectWrapper select {
+  flex: 1;
 }
 
 /* New Client Button */
@@ -179,10 +210,10 @@
   color: var(--gray-700, #374151);
   cursor: pointer;
   transition: all 0.2s ease;
-  align-self: flex-start;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .newClientButton:hover {
@@ -273,14 +304,6 @@
   flex-wrap: wrap;
 }
 
-@media (max-width: 640px) {
-  .totalSection {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-  }
-}
-
 .totalDisplay {
   display: flex;
   align-items: center;
@@ -310,16 +333,6 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-@media (max-width: 640px) {
-  .actionButtons {
-    width: 100%;
-  }
-  
-  .actionButtons button {
-    flex: 1;
-  }
 }
 
 .generateButton {
@@ -392,12 +405,6 @@
   gap: 12px;
 }
 
-@media (max-width: 480px) {
-  .deliveryButtons {
-    grid-template-columns: 1fr;
-  }
-}
-
 .deliveryButton {
   display: flex;
   align-items: center;
@@ -435,22 +442,74 @@
   pointer-events: none;
 }
 
-/* Responsive Fine-Tuning */
-@media (max-width: 768px) {
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
+@media (max-width: 1024px) {
   .generator {
     padding: 0;
   }
-  
-  .generatorForm {
-    padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
-  
+
   .generatorHeader h2 {
     font-size: 20px;
   }
-  
+
+  .generatorForm {
+    padding: 20px;
+  }
+
   .totalAmount {
     font-size: 22px;
+  }
+
+  .selectWrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .newClientButton {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .newClientActions {
+    flex-direction: column;
+  }
+
+  .newClientActions button {
+    width: 100%;
+  }
+
+  .deliveryButtons {
+    grid-template-columns: 1fr;
+  }
+
+  .actionButtons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .actionButtons button {
+    width: 100%;
+  }
+
+  .generateButton {
+    min-width: 100%;
+    padding: 12px;
+  }
+
+  .totalSection {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
   }
 }
 
@@ -459,41 +518,99 @@
     padding: 16px;
     border-radius: var(--radius-sm, 8px);
   }
-  
+
   .generatorHeader h2 {
     font-size: 18px;
   }
-  
+
   .generatorHeader p {
     font-size: 13px;
   }
-  
+
+  .formRow {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .formGroup input,
+  .formGroup select,
+  .formGroup textarea {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .formGroup label {
+    font-size: 12px;
+  }
+
+  .sectionTitle {
+    font-size: 14px;
+  }
+
   .totalAmount {
     font-size: 20px;
   }
-  
-  .generateButton {
-    min-width: 100%;
+
+  .deliveryButton {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .newClientForm {
     padding: 12px;
   }
-  
-  .actionButtons {
-    flex-direction: column;
-    width: 100%;
+
+  .newClientForm h4 {
+    font-size: 13px;
   }
-  
-  .actionButtons button {
-    width: 100%;
+
+  .errorAlert,
+  .successAlert {
+    padding: 10px 14px;
+    font-size: 13px;
   }
 }
 
-/* Dark Mode Support */
+@media (max-width: 360px) {
+  .generatorForm {
+    padding: 12px;
+  }
+
+  .generatorHeader h2 {
+    font-size: 16px;
+  }
+
+  .formGroup input,
+  .formGroup select,
+  .formGroup textarea {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .generateButton {
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  .deliveryButton {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .totalAmount {
+    font-size: 18px;
+  }
+}
+
+/* ============================================
+   DARK MODE SUPPORT
+   ============================================ */
 @media (prefers-color-scheme: dark) {
   .generatorForm {
     background: var(--gray-50, #1a1a2e);
     border-color: var(--gray-200, #1e293b);
   }
-  
+
   .formGroup input,
   .formGroup select,
   .formGroup textarea {
@@ -501,80 +618,94 @@
     color: var(--gray-800, #f1f5f9);
     border-color: var(--gray-300, #334155);
   }
-  
+
   .formGroup input:focus,
   .formGroup select:focus,
   .formGroup textarea:focus {
     border-color: var(--primary, #3b82f6);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
   }
-  
+
   .formGroup input:disabled,
   .formGroup select:disabled {
     background-color: var(--gray-300, #334155);
     color: var(--gray-500, #94a3b8);
   }
-  
+
   .sectionTitle {
     border-bottom-color: var(--gray-200, #1e293b);
   }
-  
+
   .newClientForm {
     background: var(--gray-200, #1e293b);
     border-color: var(--gray-300, #334155);
   }
-  
+
   .newClientActions button {
     background: var(--gray-300, #334155);
     color: var(--gray-600, #cbd5e1);
     border-color: var(--gray-400, #64748b);
   }
-  
+
   .newClientActions button:hover {
     background: var(--gray-400, #64748b);
   }
-  
+
   .cancelClientButton {
     background: var(--gray-300, #334155) !important;
     color: var(--gray-600, #cbd5e1) !important;
   }
-  
+
   .cancelClientButton:hover {
     background: var(--gray-400, #64748b) !important;
   }
-  
+
   .deliveryButton {
     background: var(--gray-200, #1e293b);
     border-color: var(--gray-300, #334155);
     color: var(--gray-600, #cbd5e1);
   }
-  
+
   .deliveryButton:hover {
     background: var(--gray-300, #334155);
     color: var(--gray-700, #e2e8f0);
   }
-  
+
   .newClientButton {
     background: var(--gray-200, #1e293b);
     border-color: var(--gray-300, #334155);
     color: var(--gray-600, #cbd5e1);
   }
-  
+
   .newClientButton:hover {
     background: var(--gray-300, #334155);
   }
-  
+
   .totalSection {
     border-top-color: var(--gray-200, #1e293b);
   }
-  
+
   .deliverySection {
     border-top-color: var(--gray-200, #1e293b);
   }
-  
+
   .errorAlert {
     background-color: #7f1d1d;
     border-color: #991b1b;
     color: #fca5a5;
+  }
+
+  .errorAlert .closeAlert {
+    color: #fca5a5;
+  }
+
+  .successAlert {
+    background-color: #064e3b;
+    border-color: #065f46;
+    color: #6ee7b7;
+  }
+
+  .successAlert .closeAlert {
+    color: #6ee7b7;
   }
 }
