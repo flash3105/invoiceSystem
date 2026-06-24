@@ -91,7 +91,7 @@ export const ResetPassword: React.FC = () => {
       setSuccess('Password reset successfully! Redirecting to login...');
       
       setTimeout(() => {
-        navigate('/login');
+        navigate('/');
       }, 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
