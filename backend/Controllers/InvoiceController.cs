@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using InvoiceSystem.Services;
 using InvoiceSystem.DTOs;
+using Microsoft.Extensions.Configuration;
 
 namespace InvoiceSystem.Controllers;
 
@@ -13,19 +14,22 @@ public class InvoicesController : ControllerBase
     private readonly ClientService _clientService;
     private readonly BusinessProfileService _businessProfileService;
     private readonly ILogger<InvoicesController> _logger;
+    private readonly IConfiguration _configuration; 
 
     public InvoicesController(
         InvoiceService invoiceService,
         InvoicePdfService pdfService,
         ClientService clientService,
         BusinessProfileService businessProfileService,
-        ILogger<InvoicesController> logger)
+        ILogger<InvoicesController> logger,
+        IConfiguration configuration)
     {
         _invoiceService = invoiceService;
         _pdfService = pdfService;
         _clientService = clientService;
         _businessProfileService = businessProfileService;
         _logger = logger;
+        _configuration = configuration;
     }
 
     [HttpPost]
@@ -133,10 +137,30 @@ public class InvoicesController : ControllerBase
             // Generate PDF
             var pdfBytes = _pdfService.GenerateInvoicePdf(invoice, business, client);
             
-            // TODO: Implement email sending
-            // For now, just return success
-            
-            _logger.LogInformation("Invoice {InvoiceId} would be sent to {Email}", id, client.Email);
+            // Generate HTML email content
+            var emailService = new InvoiceEmailService();
+            var htmlContent = emailService.GenerateInvoiceEmailHtml(
+                invoice, 
+                business.BusinessName, 
+                business.BusinessAddress
+            );
+
+            // Send email via Brevo - FIX: Use _configuration
+            var brevoEmailService = new EmailService(_configuration);
+            await brevoEmailService.SendInvoiceEmailWithAttachmentAsync(
+                client.Email,
+                $"Invoice #{invoice.InvoiceNumber} from {business.BusinessName}",
+                htmlContent,
+                pdfBytes
+            );
+
+            // Update invoice status to Sent if it was Draft
+            if (invoice.Status == "Draft")
+            {
+                await _invoiceService.UpdateInvoiceStatusAsync(id, "Sent", userId.Value);
+            }
+
+            _logger.LogInformation("Invoice {InvoiceId} sent to {Email}", id, client.Email);
             return Ok(new { message = $"Invoice sent via email to {client.Email} successfully" });
         }
         catch (Exception ex)
@@ -145,6 +169,7 @@ public class InvoicesController : ControllerBase
             return StatusCode(500, new { message = "Failed to send invoice email", details = ex.Message });
         }
     }
+
 
     [HttpPut("{id}/status")]
     public async Task<IActionResult> UpdateInvoiceStatus(int id, [FromBody] UpdateInvoiceStatusRequest request)
