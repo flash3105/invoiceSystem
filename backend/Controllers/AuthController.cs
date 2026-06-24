@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using InvoiceSystem.Services;
 using InvoiceSystem.Models;
+using InvoiceSystem.Models.DTOs; // ← Required for BusinessProfileDto and UpdateBusinessProfileDto
 
 namespace InvoiceSystem.Controllers;
 
@@ -278,11 +279,11 @@ public class AuthController : ControllerBase
             var profile = await _authService.GetBusinessProfileByEmailAsync(request.Email);
             var businessName = profile?.BusinessName ?? "Invoice System";
 
-            // Build reset link - NOW USING _configuration
+            // Build reset link
             var frontendUrl = _configuration["FrontendUrl"] ?? _configuration["FRONTEND_URL"] ?? "http://localhost:5173";
             var resetLink = $"{frontendUrl}/reset-password?token={Uri.EscapeDataString(token)}";
 
-            // Send email with reset link - NOW USING _configuration
+            // Send email with reset link
             var emailService = new EmailService(_configuration);
             var emailContent = GenerateResetPasswordEmailHtml(businessName, resetLink);
             

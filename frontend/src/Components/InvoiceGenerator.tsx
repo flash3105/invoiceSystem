@@ -67,6 +67,11 @@ export const InvoiceGenerator: React.FC = () => {
   const [isSavingClient, setIsSavingClient] = useState(false);
   const [generatedInvoice, setGeneratedInvoice] = useState<InvoiceResponse | null>(null);
   
+  // Loading states for delivery buttons
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
+  
   const [newClient, setNewClient] = useState<NewClientData>({
     firstName: '',
     lastName: '',
@@ -135,8 +140,7 @@ export const InvoiceGenerator: React.FC = () => {
   };
 
   const handleAddClient = async () => {
-    console.log('=== handleAddClient called ===');
-    console.log('New client data:', newClient);
+    
     
     // Validate required fields
     if (!newClient.firstName || !newClient.lastName || !newClient.email || !newClient.phoneNumber) {
@@ -327,15 +331,22 @@ export const InvoiceGenerator: React.FC = () => {
   };
 
   const handleDownloadPDF = async () => {
+    // Prevent double clicks
+    if (pdfLoading) return;
+    
     if (!generatedInvoice) {
       setError('No invoice to download. Please generate an invoice first.');
       return;
     }
 
+    setPdfLoading(true);
+    setError(null);
+
     try {
       const token = getAuthToken();
       if (!token) {
         setError('Please login to continue');
+        setPdfLoading(false);
         return;
       }
 
@@ -367,19 +378,28 @@ export const InvoiceGenerator: React.FC = () => {
     } catch (err) {
       console.error('Error downloading PDF:', err);
       setError(err instanceof Error ? err.message : 'Failed to download PDF');
+    } finally {
+      setPdfLoading(false);
     }
   };
 
   const handleEmailInvoice = async () => {
+    // Prevent double clicks
+    if (emailLoading) return;
+    
     if (!generatedInvoice) {
       setError('No invoice to send. Please generate an invoice first.');
       return;
     }
 
+    setEmailLoading(true);
+    setError(null);
+
     try {
       const token = getAuthToken();
       if (!token) {
         setError('Please login to continue');
+        setEmailLoading(false);
         return;
       }
 
@@ -401,8 +421,93 @@ export const InvoiceGenerator: React.FC = () => {
     } catch (err) {
       console.error('Error sending invoice email:', err);
       setError(err instanceof Error ? err.message : 'Failed to send invoice email');
+    } finally {
+      setEmailLoading(false);
     }
   };
+
+const handleWhatsAppShare = async () => {
+  // Prevent double clicks
+  if (whatsappLoading) return;
+  
+  if (!generatedInvoice) {
+    setError('No invoice to share. Please generate an invoice first.');
+    return;
+  }
+
+  setWhatsappLoading(true);
+  setError(null);
+
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      setError('Please login to continue');
+      setWhatsappLoading(false);
+      return;
+    }
+
+    // Get the PDF blob
+    const response = await fetch(`${API_URL}/api/invoices/${generatedInvoice.id}/pdf`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate PDF');
+    }
+
+    const blob = await response.blob();
+    
+    // Create a File object with proper name
+    const fileName = `Invoice_${generatedInvoice.invoiceNumber}.pdf`;
+    const file = new File([blob], fileName, { type: 'application/pdf' });
+
+    // Check if Web Share API is supported (mobile browsers)
+    if (navigator.share && navigator.canShare) {
+      const shareData = {
+        title: `Invoice ${generatedInvoice.invoiceNumber}`,
+        files: [file],
+      };
+
+      if (navigator.canShare(shareData)) {
+        try {
+          await navigator.share(shareData);
+          setSuccess('Invoice shared successfully!');
+          setTimeout(() => setSuccess(null), 3000);
+          setWhatsappLoading(false);
+          return;
+        } catch (shareError) {
+          if ((shareError as Error).name !== 'AbortError') {
+            console.error('Share error:', shareError);
+          } else {
+            setWhatsappLoading(false);
+            return;
+          }
+        }
+      }
+    }
+
+    // Fallback: Download the PDF
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    setSuccess('PDF downloaded! Please share it via WhatsApp.');
+    setTimeout(() => setSuccess(null), 3000);
+
+  } catch (err) {
+    console.error('Error sharing via WhatsApp:', err);
+    setError('Failed to share via WhatsApp. Please download the PDF and share manually.');
+  } finally {
+    setWhatsappLoading(false);
+  }
+};
 
   const handleCancelNewClient = () => {
     setShowNewClient(false);
@@ -726,32 +831,30 @@ export const InvoiceGenerator: React.FC = () => {
             <div className={styles.deliveryButtons}>
               <button 
                 type="button" 
-                className={styles.deliveryButton}
+                className={`${styles.deliveryButton} ${emailLoading ? styles.loading : ''}`}
                 onClick={handleEmailInvoice}
+                disabled={emailLoading}
               >
                 <Mail size={16} />
-                Send via Email
+                {emailLoading ? 'Sending...' : 'Send via Email'}
               </button>
               <button 
                 type="button" 
-                className={styles.deliveryButton}
+                className={`${styles.deliveryButton} ${pdfLoading ? styles.loading : ''}`}
                 onClick={handleDownloadPDF}
+                disabled={pdfLoading}
               >
                 <Download size={16} />
-                Download PDF
+                {pdfLoading ? 'Downloading...' : 'Download PDF'}
               </button>
               <button 
                 type="button" 
-                className={styles.deliveryButton}
-                onClick={() => {
-                  // WhatsApp sharing
-                  const message = `Invoice ${generatedInvoice.invoiceNumber} - Total: R${generatedInvoice.total.toFixed(2)}`;
-                  const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
-                  window.open(url, '_blank');
-                }}
+                className={`${styles.deliveryButton} ${whatsappLoading ? styles.loading : ''}`}
+                onClick={handleWhatsAppShare}
+                disabled={whatsappLoading}
               >
                 <Phone size={16} />
-                Share via WhatsApp
+                {whatsappLoading ? 'Opening...' : 'Share via WhatsApp'}
               </button>
             </div>
           </div>

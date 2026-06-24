@@ -9,7 +9,6 @@ public class User : BaseModel
     [PrimaryKey("id")]
     public int Id { get; set; }
 
-    
 
     [Column("email")]
     public string Email { get; set; } = string.Empty;
