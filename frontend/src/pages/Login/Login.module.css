@@ -191,6 +191,19 @@
   font-weight: 500;
   transition: color 0.2s;
 }
+.registerLink {
+  font-size: 12px;
+  margin-bottom: 25px;
+  color: #1a3a5c;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.registerLink:hover {
+  color: #0d1b2a;
+  text-decoration: underline;
+}
 
 .forgotPassword:hover {
   color: #0d1b2a;

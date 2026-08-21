@@ -374,15 +374,8 @@
   width: calc(100% - var(--sidebar-collapsed));
 }
 
-/* ============================================
-   CONTENT AREA - FIXED
-   ============================================ */
-.contentArea {
-  flex: 1;
-  padding: 16px 24px 24px 24px;
-  max-width: 100%;
-  overflow-x: hidden;
-}
+
+
 
 /* ============================================
    MOBILE RESPONSIVE - Fix for main content
@@ -1029,6 +1022,6 @@
 
   .dateDisplay {
     background: var(--gray-200);
-    color: var(--gray-600);
+    color: var(--gray-600); 
   }
 }

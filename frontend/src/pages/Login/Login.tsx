@@ -178,6 +178,9 @@ const Login: React.FC = () => {
               <Link to="/forgot-password" className={styles.forgotPassword}>
                 Forgot password?
               </Link>
+              <Link to ="/register" className={styles.registerLink}>
+                Don't have an account? Register
+              </Link>
             </div>
 
             <button

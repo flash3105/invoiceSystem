@@ -1,6 +1,6 @@
 // src/Components/InvoiceGenerator.tsx
 import React, { useState, useEffect } from 'react';
-import { Send, Download, Mail, Phone, FileText, User, Calendar, DollarSign, Hash, AlertCircle, Plus, X } from 'lucide-react';
+import { Send, Download, Mail, Phone, FileText, User, Calendar, DollarSign, Hash, AlertCircle, Plus, X, Trash2 } from 'lucide-react';
 import styles from './InvoiceGenerator.module.css';
 
 // API base URL
@@ -14,20 +14,26 @@ interface Client {
   email: string;
   phoneNumber: string;
   address?: string;
-  idNumber?: string;
-  passportNumber?: string;
   notes?: string;
   isActive: boolean;
 }
 
+// Interface for individual line items (now includes serviceDate)
+interface InvoiceItem {
+  id: string; // Used for React keys mapping
+  serviceDate: string;
+  description: string;
+  code: string;
+  quantity: number;
+  rate: number;
+}
+
+// Form data holds top-level invoice details and items array
 interface InvoiceFormData {
   clientId: string;
-  serviceDate: string;
   dueDate: string;
-  procedureType: string;
-  procedureCode: string;
-  amount: number;
   notes?: string;
+  items: InvoiceItem[];
 }
 
 interface NewClientData {
@@ -47,15 +53,23 @@ interface InvoiceResponse {
   status: string;
 }
 
+// Helper function to create an empty line item with today's date as default
+const createEmptyItem = (): InvoiceItem => ({
+  id: Date.now().toString() + Math.random().toString(),
+  serviceDate: new Date().toISOString().split('T')[0], // Default to current date YYYY-MM-DD
+  description: '',
+  code: '',
+  quantity: 1,
+  rate: 0,
+});
+
 export const InvoiceGenerator: React.FC = () => {
+  // Initial state without global serviceDate
   const [formData, setFormData] = useState<InvoiceFormData>({
     clientId: '',
-    serviceDate: '',
     dueDate: '',
-    procedureType: '',
-    procedureCode: '',
-    amount: 0,
     notes: '',
+    items: [createEmptyItem()],
   });
   
   const [clients, setClients] = useState<Client[]>([]);
@@ -90,7 +104,31 @@ export const InvoiceGenerator: React.FC = () => {
   // Fetch clients on mount
   useEffect(() => {
     loadClients();
+    loadDefaultNotes();
   }, []);
+
+  const loadDefaultNotes = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) return;
+
+      const response = await fetch(`${API_URL}/api/auth/business-profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const profile = await response.json();
+        // If the user has saved default notes, pre-fill the formData!
+        if (profile.defaultNotes) {
+          setFormData(prev => ({ ...prev, notes: profile.defaultNotes }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching default notes:', error);
+    }
+  };
 
   const loadClients = async () => {
     try {
@@ -126,11 +164,43 @@ export const InvoiceGenerator: React.FC = () => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  // Handles top-level form changes (client, due date, notes)
+  const handleTopLevelChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handles changes for specific line items
+  const handleItemChange = (id: string, field: keyof InvoiceItem, value: string | number) => {
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'amount' ? parseFloat(value) || 0 : value,
+      items: prev.items.map(item => {
+        if (item.id === id) {
+          let parsedValue: string | number = value;
+          if (field === 'rate') parsedValue = parseFloat(value as string) || 0;
+          if (field === 'quantity') parsedValue = parseInt(value as string, 10) || 1;
+
+          return { ...item, [field]: parsedValue };
+        }
+        return item;
+      })
+    }));
+  };
+
+  // Add a new line item
+  const handleAddItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, createEmptyItem()]
+    }));
+  };
+
+  // Remove a line item
+  const handleRemoveItem = (id: string) => {
+    if (formData.items.length === 1) return; // Prevent removing the last item
+    setFormData(prev => ({
+      ...prev,
+      items: prev.items.filter(item => item.id !== id)
     }));
   };
 
@@ -140,19 +210,13 @@ export const InvoiceGenerator: React.FC = () => {
   };
 
   const handleAddClient = async () => {
-    
-    
-    // Validate required fields
     if (!newClient.firstName || !newClient.lastName || !newClient.email || !newClient.phoneNumber) {
-      console.log('Validation failed: Missing required fields');
       setError('First name, last name, email, and phone number are required');
       return;
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newClient.email)) {
-      console.log('Validation failed: Invalid email');
       setError('Please enter a valid email address');
       return;
     }
@@ -162,16 +226,12 @@ export const InvoiceGenerator: React.FC = () => {
 
     try {
       const token = getAuthToken();
-      console.log('Auth token:', token ? 'Present' : 'Missing');
       
       if (!token) {
         setError('Please login to continue');
         setIsSavingClient(false);
         return;
       }
-
-      console.log('Sending POST request to:', `${API_URL}/api/clients`);
-      console.log('Request body:', JSON.stringify(newClient, null, 2));
 
       const response = await fetch(`${API_URL}/api/clients`, {
         method: 'POST',
@@ -182,19 +242,12 @@ export const InvoiceGenerator: React.FC = () => {
         body: JSON.stringify(newClient),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-
       const data = await response.json();
-      console.log('Response data:', data);
 
       if (!response.ok) {
         throw new Error(data.message || data.details || 'Failed to create client');
       }
 
-      console.log('Client created successfully!');
-
-      // Close new client form and refresh client list
       setShowNewClient(false);
       setNewClient({
         firstName: '',
@@ -211,7 +264,6 @@ export const InvoiceGenerator: React.FC = () => {
       setTimeout(() => setSuccess(null), 3000);
       
     } catch (err) {
-      console.error('Error creating client:', err);
       setError(err instanceof Error ? err.message : 'Failed to create client');
     } finally {
       setIsSavingClient(false);
@@ -221,35 +273,17 @@ export const InvoiceGenerator: React.FC = () => {
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate form
-    if (!formData.clientId) {
-      setError('Please select a client');
-      return;
-    }
-    
-    if (!formData.serviceDate) {
-      setError('Please select a service date');
-      return;
-    }
-    
-    if (!formData.dueDate) {
-      setError('Please select a due date');
-      return;
-    }
-    
-    if (!formData.procedureType) {
-      setError('Please select a procedure type');
-      return;
-    }
-    
-    if (!formData.procedureCode) {
-      setError('Please enter a procedure code');
-      return;
-    }
+    // Top-level validation
+    if (!formData.clientId) { setError('Please select a client'); return; }
+    if (!formData.dueDate) { setError('Please select a due date'); return; }
 
-    if (formData.amount <= 0) {
-      setError('Please enter a valid amount');
-      return;
+    // Line items validation (checking description, service date, quantity, and rate)
+    for (let i = 0; i < formData.items.length; i++) {
+      const item = formData.items[i];
+      if (!item.serviceDate) { setError(`Please enter a service date for Item ${i + 1}`); return; }
+      if (!item.description) { setError(`Please enter a description for Item ${i + 1}`); return; }
+      if (item.quantity <= 0) { setError(`Please enter a valid quantity for Item ${i + 1}`); return; }
+      if (item.rate <= 0) { setError(`Please enter a valid rate for Item ${i + 1}`); return; }
     }
 
     setIsGenerating(true);
@@ -266,26 +300,20 @@ export const InvoiceGenerator: React.FC = () => {
         return;
       }
 
-      // Prepare invoice data - matches backend CreateInvoiceRequest
+      // Map request data with per-item service dates matching backend DTO
       const invoiceData = {
         clientId: parseInt(formData.clientId),
-        serviceDate: formData.serviceDate,
         dueDate: formData.dueDate,
-        procedureType: formData.procedureType,
-        procedureCode: formData.procedureCode,
-        taxRate: 0, // Default tax rate
+        taxRate: 0,
         notes: formData.notes || '',
-        items: [
-          {
-            description: `${formData.procedureType} - ${formData.procedureCode}`,
-            code: formData.procedureCode,
-            quantity: 1,
-            rate: formData.amount,
-          }
-        ]
+        items: formData.items.map(item => ({
+          serviceDate: item.serviceDate,
+          description: item.description,
+          code: item.code || '',
+          quantity: item.quantity,
+          rate: item.rate,
+        }))
       };
-
-      console.log('Sending invoice data:', invoiceData);
 
       const response = await fetch(`${API_URL}/api/invoices`, {
         method: 'POST',
@@ -296,15 +324,12 @@ export const InvoiceGenerator: React.FC = () => {
         body: JSON.stringify(invoiceData),
       });
 
-      console.log('Response status:', response.status);
-
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.message || data.details || 'Failed to generate invoice');
       }
 
       const data = await response.json();
-      console.log('Invoice created:', data);
       
       setGeneratedInvoice(data);
       setSuccess(`Invoice ${data.invoiceNumber} generated successfully! (Total: R${data.total.toFixed(2)})`);
@@ -312,12 +337,9 @@ export const InvoiceGenerator: React.FC = () => {
       // Reset form
       setFormData({
         clientId: '',
-        serviceDate: '',
         dueDate: '',
-        procedureType: '',
-        procedureCode: '',
-        amount: 0,
         notes: '',
+        items: [createEmptyItem()],
       });
 
       setTimeout(() => setSuccess(null), 5000);
@@ -331,39 +353,23 @@ export const InvoiceGenerator: React.FC = () => {
   };
 
   const handleDownloadPDF = async () => {
-    // Prevent double clicks
     if (pdfLoading) return;
-    
-    if (!generatedInvoice) {
-      setError('No invoice to download. Please generate an invoice first.');
-      return;
-    }
+    if (!generatedInvoice) { setError('No invoice to download.'); return; }
 
     setPdfLoading(true);
     setError(null);
 
     try {
       const token = getAuthToken();
-      if (!token) {
-        setError('Please login to continue');
-        setPdfLoading(false);
-        return;
-      }
+      if (!token) { setError('Please login to continue'); setPdfLoading(false); return; }
 
       const response = await fetch(`${API_URL}/api/invoices/${generatedInvoice.id}/pdf`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to download PDF');
-      }
+      if (!response.ok) throw new Error('Failed to download PDF');
 
-      // Get the PDF as a blob
       const blob = await response.blob();
-      
-      // Create a download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -376,7 +382,6 @@ export const InvoiceGenerator: React.FC = () => {
       setSuccess('PDF downloaded successfully!');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      console.error('Error downloading PDF:', err);
       setError(err instanceof Error ? err.message : 'Failed to download PDF');
     } finally {
       setPdfLoading(false);
@@ -384,24 +389,15 @@ export const InvoiceGenerator: React.FC = () => {
   };
 
   const handleEmailInvoice = async () => {
-    // Prevent double clicks
     if (emailLoading) return;
-    
-    if (!generatedInvoice) {
-      setError('No invoice to send. Please generate an invoice first.');
-      return;
-    }
+    if (!generatedInvoice) { setError('No invoice to send.'); return; }
 
     setEmailLoading(true);
     setError(null);
 
     try {
       const token = getAuthToken();
-      if (!token) {
-        setError('Please login to continue');
-        setEmailLoading(false);
-        return;
-      }
+      if (!token) { setError('Please login to continue'); setEmailLoading(false); return; }
 
       const response = await fetch(`${API_URL}/api/invoices/${generatedInvoice.id}/email`, {
         method: 'POST',
@@ -419,109 +415,86 @@ export const InvoiceGenerator: React.FC = () => {
       setSuccess('Invoice sent via email successfully!');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      console.error('Error sending invoice email:', err);
       setError(err instanceof Error ? err.message : 'Failed to send invoice email');
     } finally {
       setEmailLoading(false);
     }
   };
 
-const handleWhatsAppShare = async () => {
-  // Prevent double clicks
-  if (whatsappLoading) return;
-  
-  if (!generatedInvoice) {
-    setError('No invoice to share. Please generate an invoice first.');
-    return;
-  }
+  const handleWhatsAppShare = async () => {
+    if (whatsappLoading) return;
+    if (!generatedInvoice) { setError('No invoice to share.'); return; }
 
-  setWhatsappLoading(true);
-  setError(null);
+    setWhatsappLoading(true);
+    setError(null);
 
-  try {
-    const token = getAuthToken();
-    if (!token) {
-      setError('Please login to continue');
-      setWhatsappLoading(false);
-      return;
-    }
+    try {
+      const token = getAuthToken();
+      if (!token) { setError('Please login to continue'); setWhatsappLoading(false); return; }
 
-    // Get the PDF blob
-    const response = await fetch(`${API_URL}/api/invoices/${generatedInvoice.id}/pdf`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
+      const response = await fetch(`${API_URL}/api/invoices/${generatedInvoice.id}/pdf`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to generate PDF');
-    }
+      if (!response.ok) throw new Error('Failed to generate PDF');
 
-    const blob = await response.blob();
-    
-    // Create a File object with proper name
-    const fileName = `Invoice_${generatedInvoice.invoiceNumber}.pdf`;
-    const file = new File([blob], fileName, { type: 'application/pdf' });
+      const blob = await response.blob();
+      const fileName = `Invoice_${generatedInvoice.invoiceNumber}.pdf`;
+      const file = new File([blob], fileName, { type: 'application/pdf' });
 
-    // Check if Web Share API is supported (mobile browsers)
-    if (navigator.share && navigator.canShare) {
-      const shareData = {
-        title: `Invoice ${generatedInvoice.invoiceNumber}`,
-        files: [file],
-      };
+      if (navigator.share && navigator.canShare) {
+        const shareData = {
+          title: `Invoice ${generatedInvoice.invoiceNumber}`,
+          files: [file],
+        };
 
-      if (navigator.canShare(shareData)) {
-        try {
-          await navigator.share(shareData);
-          setSuccess('Invoice shared successfully!');
-          setTimeout(() => setSuccess(null), 3000);
-          setWhatsappLoading(false);
-          return;
-        } catch (shareError) {
-          if ((shareError as Error).name !== 'AbortError') {
-            console.error('Share error:', shareError);
-          } else {
+        if (navigator.canShare(shareData)) {
+          try {
+            await navigator.share(shareData);
+            setSuccess('Invoice shared successfully!');
+            setTimeout(() => setSuccess(null), 3000);
             setWhatsappLoading(false);
             return;
+          } catch (shareError) {
+            if ((shareError as Error).name !== 'AbortError') {
+              console.error('Share error:', shareError);
+            } else {
+              setWhatsappLoading(false);
+              return;
+            }
           }
         }
       }
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      setSuccess('PDF downloaded! Please share it via WhatsApp.');
+      setTimeout(() => setSuccess(null), 3000);
+
+    } catch (err) {
+      setError('Failed to share via WhatsApp.');
+    } finally {
+      setWhatsappLoading(false);
     }
-
-    // Fallback: Download the PDF
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    
-    setSuccess('PDF downloaded! Please share it via WhatsApp.');
-    setTimeout(() => setSuccess(null), 3000);
-
-  } catch (err) {
-    console.error('Error sharing via WhatsApp:', err);
-    setError('Failed to share via WhatsApp. Please download the PDF and share manually.');
-  } finally {
-    setWhatsappLoading(false);
-  }
-};
+  };
 
   const handleCancelNewClient = () => {
     setShowNewClient(false);
     setNewClient({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phoneNumber: '',
-      address: '',
-      idNumber: '',
-      passportNumber: '',
+      firstName: '', lastName: '', email: '', phoneNumber: '', address: '', idNumber: '', passportNumber: '',
     });
     setError(null);
   };
+
+  // Helper calculation for UI display
+  const currentSubtotal = formData.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
 
   return (
     <div className={styles.generator}>
@@ -534,10 +507,7 @@ const handleWhatsAppShare = async () => {
         <div className={styles.errorAlert}>
           <AlertCircle size={20} />
           <span>{error}</span>
-          <button 
-            className={styles.closeAlert} 
-            onClick={() => setError(null)}
-          >
+          <button className={styles.closeAlert} onClick={() => setError(null)}>
             <X size={16} />
           </button>
         </div>
@@ -546,10 +516,7 @@ const handleWhatsAppShare = async () => {
       {success && (
         <div className={styles.successAlert}>
           <span>{success}</span>
-          <button 
-            className={styles.closeAlert} 
-            onClick={() => setSuccess(null)}
-          >
+          <button className={styles.closeAlert} onClick={() => setSuccess(null)}>
             <X size={16} />
           </button>
         </div>
@@ -557,7 +524,10 @@ const handleWhatsAppShare = async () => {
 
       <form onSubmit={handleGenerate} className={styles.generatorForm}>
         <div className={styles.formGrid}>
-          {/* Client Section */}
+          
+          {/* ======================================= */}
+          {/* 1. CLIENT SECTION                       */}
+          {/* ======================================= */}
           <div className={styles.formSection}>
             <h3 className={styles.sectionTitle}>
               <User size={18} />
@@ -571,7 +541,7 @@ const handleWhatsAppShare = async () => {
                   id="clientId"
                   name="clientId"
                   value={formData.clientId}
-                  onChange={handleChange}
+                  onChange={handleTopLevelChange}
                   required
                   disabled={loading}
                 >
@@ -702,101 +672,152 @@ const handleWhatsAppShare = async () => {
             )}
           </div>
 
-          {/* Service Details */}
+          {/* ======================================= */}
+          {/* 2. LINE ITEMS SECTION (Per-item Date)   */}
+          {/* ======================================= */}
+          <div className={styles.formSection}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 className={styles.sectionTitle} style={{ margin: 0, borderTop: 'none', paddingTop: 0 }}>
+                <FileText size={18} />
+                Line Items
+              </h3>
+              <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--gray-800)' }}>
+                Subtotal: R{currentSubtotal.toFixed(2)}
+              </div>
+            </div>
+
+            {formData.items.map((item, index) => (
+              <div key={item.id} style={{ 
+                background: 'var(--gray-50)', 
+                padding: '20px', 
+                borderRadius: 'var(--radius-sm)', 
+                marginBottom: '16px',
+                border: '1px solid var(--gray-200)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h4 style={{ margin: 0, fontSize: '14px', color: 'var(--gray-500)', fontWeight: '600' }}>ITEM {index + 1}</h4>
+                  
+                  {formData.items.length > 1 && (
+                    <button 
+                      type="button" 
+                      onClick={() => handleRemoveItem(item.id)}
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}
+                      title="Remove Item"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Service Date & Description */}
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label><Calendar size={14} /> Service Date *</label>
+                    <input
+                      type="date"
+                      value={item.serviceDate}
+                      onChange={(e) => handleItemChange(item.id, 'serviceDate', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className={styles.formGroup} style={{ flex: 2 }}>
+                    <label>Description *</label>
+                    <input
+                      type="text"
+                      placeholder="Item description"
+                      value={item.description}
+                      onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Code, Quantity & Rate */}
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label>Item Code / SKU</label>
+                    <input
+                      type="text"
+                      placeholder="Optional"
+                      value={item.code}
+                      onChange={(e) => handleItemChange(item.id, 'code', e.target.value)}
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Quantity *</label>
+                    <input
+                      type="number"
+                      value={item.quantity || ''}
+                      onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
+                      min="1"
+                      step="1"
+                      required
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label><DollarSign size={14} /> Rate (ZAR) *</label>
+                    <input
+                      type="number"
+                      placeholder="0.00"
+                      value={item.rate || ''}
+                      onChange={(e) => handleItemChange(item.id, 'rate', e.target.value)}
+                      required
+                      min="0.01"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <button 
+              type="button" 
+              onClick={handleAddItem}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px', 
+                background: 'white', border: '1px dashed var(--primary)', color: 'var(--primary)',
+                padding: '12px 20px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                fontWeight: '600', width: '100%', justifyContent: 'center', transition: 'var(--transition)'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = 'var(--primary-light)'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'white'}
+            >
+              <Plus size={16} /> Add Another Item
+            </button>
+          </div>
+
+          {/* ======================================= */}
+          {/* 3. ADDITIONAL DETAILS (Due Date & Notes)*/}
+          {/* ======================================= */}
           <div className={styles.formSection}>
             <h3 className={styles.sectionTitle}>
-              <FileText size={18} />
-              Service Details
+              <Calendar size={18} />
+              Invoice Terms
             </h3>
-
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label htmlFor="serviceDate">
-                  <Calendar size={14} />
-                  Service Date *
-                </label>
-                <input
-                  id="serviceDate"
-                  name="serviceDate"
-                  type="date"
-                  value={formData.serviceDate}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label htmlFor="dueDate">
-                  <Calendar size={14} />
-                  Due Date *
-                </label>
-                <input
-                  id="dueDate"
-                  name="dueDate"
-                  type="date"
-                  value={formData.dueDate}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label htmlFor="procedureType">Procedure Type *</label>
-                <input
-                  type="text"
-                  id="procedureType"
-                  name="procedureType"
-                  value={formData.procedureType}
-                  onChange={handleChange}
-                  placeholder="Enter procedure type"
-                  required
-                />
-              
-              </div>
-              <div className={styles.formGroup}>
-                <label htmlFor="procedureCode">
-                  <Hash size={14} />
-                  Procedure Code *
-                </label>
-                <input
-                  id="procedureCode"
-                  name="procedureCode"
-                  type="text"
-                  placeholder="CPT Code"
-                  value={formData.procedureCode}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </div>
-
+            
             <div className={styles.formGroup}>
-              <label htmlFor="amount">
-                Amount (ZAR) *
+              <label htmlFor="dueDate">
+                Due Date *
               </label>
               <input
-                id="amount"
-                name="amount"
-                type="number"
-                placeholder="0.00"
-                value={formData.amount || ''}
-                onChange={handleChange}
+                id="dueDate"
+                name="dueDate"
+                type="date"
+                value={formData.dueDate}
+                onChange={handleTopLevelChange}
                 required
-                min="0.01"
-                step="0.01"
               />
             </div>
 
             <div className={styles.formGroup}>
-              <label htmlFor="notes">Notes</label>
+              <label htmlFor="notes">Notes to Client</label>
               <textarea
                 id="notes"
                 name="notes"
                 rows={3}
-                placeholder="Additional notes..."
+                placeholder="Thank you for your business! Payment is due within 30 days."
                 value={formData.notes}
-                onChange={handleChange}
+                onChange={handleTopLevelChange}
               />
             </div>
           </div>
@@ -823,7 +844,7 @@ const handleWhatsAppShare = async () => {
           </button>
         </div>
 
-        {/* Delivery Options - Only show after invoice is generated */}
+        {/* Delivery Options */}
         {generatedInvoice && (
           <div className={styles.deliverySection}>
             <p className={styles.deliveryLabel}>Invoice #{generatedInvoice.invoiceNumber} generated!</p>

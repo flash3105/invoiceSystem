@@ -28,6 +28,7 @@ interface BusinessProfile {
   logoUrl?: string;
   invoicePrefix?: string;
   invoiceNumberCounter?: number;
+  defaultNotes?: string;
   currency: string;
   createdAt?: string;
   updatedAt?: string;
@@ -201,6 +202,7 @@ const SettingsPage: React.FC = () => {
     branchCode: '',
     accountHolderName: '',
     businessEmail: '',
+    defaultNotes: '',
     currency: 'ZAR'
   });
 
@@ -277,10 +279,10 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setBusinessProfile(prev => ({ ...prev, [name]: value }));
-  };
+const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const { name, value } = e.target;
+  setBusinessProfile(prev => ({ ...prev, [name]: value }));
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -315,6 +317,7 @@ const SettingsPage: React.FC = () => {
         bankName: businessProfile.bankName || '',
         branchCode: businessProfile.branchCode || '',
         accountHolderName: businessProfile.accountHolderName || '',
+        defaultNotes: businessProfile.defaultNotes || '',
         businessEmail: businessProfile.businessEmail || '',
       };
 
@@ -514,7 +517,28 @@ const SettingsPage: React.FC = () => {
             />
           </div>
         </div>
-
+      <h3 className={styles.sectionTitle}>Invoice Preferences</h3>
+        <div className={styles.settingsGrid} style={{ display: 'block' }}>
+          <div className={styles.settingsGroup}>
+            <label>Default Notes / Terms & Conditions</label>
+            <textarea 
+              name="defaultNotes" 
+              value={businessProfile.defaultNotes || ''} 
+              onChange={handleChange} 
+              placeholder="e.g. Payment is due within 30 days. Late payments accrue 5% interest."
+              rows={4}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: '1px solid #e2e8f0',
+                marginTop: '5px',
+                fontFamily: 'inherit',
+                resize: 'vertical'
+              }}
+            />
+          </div>
+        </div>
         <div className={styles.formActions}>
           <button 
             type="submit" 

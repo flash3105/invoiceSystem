@@ -2,14 +2,12 @@
 
 /* Generator Container */
 .generator {
-  max-width: 100%;
-  margin: 0;
+  width: 100%;
+  max-width: 1200px;
+  margin: 32px 0; /* Just a little top/bottom breathing room */
   padding: 0;
   background: transparent;
-  border-radius: 0;
-  width: 100%;
 }
-
 /* Remove extra padding from parent if needed */
 .generator * {
   box-sizing: border-box;
