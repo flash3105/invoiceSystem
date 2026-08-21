@@ -12,15 +12,18 @@ public class AuthController : ControllerBase
     private readonly AuthService _authService;
     private readonly ILogger<AuthController> _logger;
     private readonly IConfiguration _configuration; 
+    private readonly SupabaseStorageService _storageService;
 
     public AuthController(
         AuthService authService, 
         ILogger<AuthController> logger,
-        IConfiguration configuration) 
+        IConfiguration configuration,
+        SupabaseStorageService storageService) 
     {
         _authService = authService;
         _logger = logger;
         _configuration = configuration; 
+        _storageService = storageService;
     }
 
     [HttpPost("login")]
@@ -47,7 +50,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+    public async Task<IActionResult> Register([FromForm] RegisterRequest request)
     {
         // Validate user account fields
         if (string.IsNullOrEmpty(request.Email) || 
@@ -56,7 +59,19 @@ public class AuthController : ControllerBase
         {
             return BadRequest(new { message = "Email, password, and full name are required" });
         }
-
+        if (request.LogoFile != null)
+        {
+            try 
+            {
+                string publicLogoUrl = await _storageService.UploadLogoAsync(request.LogoFile);
+                request.BusinessProfile.LogoUrl = publicLogoUrl; 
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Logo upload failed during registration");
+                return StatusCode(500, new { message = "Failed to upload logo image." });
+            }
+        }
         // Validate business profile fields
         if (request.BusinessProfile == null ||
             string.IsNullOrEmpty(request.BusinessProfile.BusinessName) ||
@@ -133,7 +148,6 @@ public async Task<IActionResult> GetBusinessProfile()
             BusinessAddress = profile.BusinessAddress,
             PhoneNumber = profile.PhoneNumber,
             VatNumber = profile.VatNumber,
-            PracticeNumber = profile.PracticeNumber, // ← NEW
             AccountNumber = profile.AccountNumber,
             BankName = profile.BankName,
             BranchCode = profile.BranchCode,
@@ -175,7 +189,6 @@ public async Task<IActionResult> UpdateBusinessProfile([FromBody] UpdateBusiness
             BusinessAddress = updateDto.BusinessAddress,
             PhoneNumber = updateDto.PhoneNumber,
             VatNumber = updateDto.VatNumber,
-            PracticeNumber = updateDto.PracticeNumber, // ← NEW
             AccountNumber = updateDto.AccountNumber,
             BankName = updateDto.BankName,
             BranchCode = updateDto.BranchCode,
@@ -204,7 +217,6 @@ public async Task<IActionResult> UpdateBusinessProfile([FromBody] UpdateBusiness
                 BusinessAddress = profile.BusinessAddress,
                 PhoneNumber = profile.PhoneNumber,
                 VatNumber = profile.VatNumber,
-                PracticeNumber = profile.PracticeNumber, // ← NEW
                 AccountNumber = profile.AccountNumber,
                 BankName = profile.BankName,
                 BranchCode = profile.BranchCode,
@@ -433,6 +445,7 @@ public class RegisterRequest
     public string Password { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public BusinessProfile BusinessProfile { get; set; } = new BusinessProfile();
+    public IFormFile? LogoFile { get; set; }
 }
 
 public class ChangePasswordRequest

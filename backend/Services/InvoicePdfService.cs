@@ -24,55 +24,57 @@ public class InvoicePdfService
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(40);
+                page.Margin(40f);
                 page.DefaultTextStyle(x => x.FontSize(10).FontFamily(Fonts.Arial));
 
                 // Add a modern accent line at the very top of the page
-                page.Background().AlignTop().ExtendHorizontal().Height(8).Background(Colors.Blue.Darken2);
+                page.Background().AlignTop().ExtendHorizontal().Height(8f).Background(Colors.Blue.Darken2);
 
                 // Header with Business Info
-                page.Header().PaddingTop(15).Column(header =>
+                page.Header().PaddingTop(15f).Column(header =>
                 {
                     header.Item().Row(row =>
                     {
                         // Business Details on the left
                         row.RelativeItem().Column(logoCol =>
                         {
-                            // --- INTEGRATED LOGO ---
-                            string baseDir = AppContext.BaseDirectory;
-                            string logoPath = Path.Combine(baseDir, "Services", "Images", "logo.png");
-
-                            if (File.Exists(logoPath))
+                            // --- DYNAMIC LOGO FROM SUPABASE ---
+                            if (!string.IsNullOrEmpty(business.LogoUrl))
                             {
-                                logoCol.Item().Width(100).Image(logoPath);
-                                logoCol.Item().PaddingBottom(10); // Space between logo and text
+                                try
+                                {
+                                    // Download the image bytes from the public URL
+                                    using var httpClient = new System.Net.Http.HttpClient();
+                                    byte[] imageBytes = httpClient.GetByteArrayAsync(business.LogoUrl).GetAwaiter().GetResult();
+                                    
+                                    logoCol.Item().Width(100f).Image(imageBytes);
+                                    logoCol.Item().PaddingBottom(10f);
+                                }
+                                catch
+                                {
+                                    // Silently fail and skip the logo if the download fails
+                                    // This ensures the PDF still generates even if the image link is broken
+                                }
                             }
-                            // -----------------------
+                            // ----------------------------------
 
                             logoCol.Item().Text(business.BusinessName)
                                 .FontSize(24)
                                 .Bold()
                                 .FontColor(Colors.Blue.Darken3);
                             
-                            logoCol.Item().PaddingTop(4).Text(business.BusinessAddress)
+                            logoCol.Item().PaddingTop(4f).Text(business.BusinessAddress)
                                 .FontColor(Colors.Grey.Darken2);
                             
                             logoCol.Item().Text($"Phone: {business.PhoneNumber} | Email: {business.BusinessEmail ?? "N/A"}")
                                 .FontColor(Colors.Grey.Darken2);
-                            
-                            // ← UPDATED: Practice Number before VAT
-                            if (!string.IsNullOrEmpty(business.PracticeNumber))
-                            {
-                                logoCol.Item().Text($"Practice #: {business.PracticeNumber}")
-                                    .FontColor(Colors.Grey.Darken2);
-                            }
                             
                             logoCol.Item().Text($"VAT: {business.VatNumber}")
                                 .FontColor(Colors.Grey.Darken2);
                         });
                         
                         // Invoice details on the right
-                        row.ConstantItem(200).Column(invoiceDetails =>
+                        row.ConstantItem(200f).Column(invoiceDetails =>
                         {
                             invoiceDetails.Item().Text("INVOICE")
                                 .FontSize(28)
@@ -80,13 +82,13 @@ public class InvoicePdfService
                                 .FontColor(Colors.Grey.Lighten1)
                                 .AlignRight();
                             
-                            invoiceDetails.Item().PaddingTop(5).Text($"# {invoice.InvoiceNumber}")
+                            invoiceDetails.Item().PaddingTop(5f).Text($"# {invoice.InvoiceNumber}")
                                 .FontSize(14)
                                 .Bold()
                                 .FontColor(Colors.Blue.Darken2)
                                 .AlignRight();
                             
-                            invoiceDetails.Item().PaddingTop(5).Text($"Date: {invoice.CreatedAt:dd MMM yyyy}")
+                            invoiceDetails.Item().PaddingTop(5f).Text($"Date: {invoice.CreatedAt:dd MMM yyyy}")
                                 .AlignRight()
                                 .FontColor(Colors.Grey.Darken2);
                             
@@ -96,31 +98,18 @@ public class InvoicePdfService
                         });
                     });
                     
-                    // Thicker, cleaner divider line
-                    header.Item().PaddingTop(20).BorderBottom(2).BorderColor(Colors.Grey.Lighten2);
+                    header.Item().PaddingTop(20f).BorderBottom(2f).BorderColor(Colors.Grey.Lighten2);
                 });
 
                 // Content
                 page.Content().Column(content =>
                 {
-                    content.Item().PaddingTop(20).Row(row =>
+                    // BILL TO on the right
+                    content.Item().PaddingTop(20f).Row(row =>
                     {
-                        // Procedure Details - on the left
-                        row.RelativeItem().Column(procedure =>
-                        {
-                            procedure.Item().Text("PROCEDURE DETAILS")
-                                .FontSize(11)
-                                .Bold()
-                                .FontColor(Colors.Blue.Darken3);
-                            
-                            procedure.Item().PaddingTop(4).Text($"Type: {invoice.ProcedureType}");
-                            procedure.Item().Text($"Code: {invoice.ProcedureCode}");
-                            procedure.Item().Text($"Service Date: {invoice.ServiceDate:dd MMM yyyy}")
-                                .FontColor(Colors.Grey.Darken2);
-                        });
-                        
-                        // BILL TO on the right
-                        row.ConstantItem(220).Column(clientDetails =>
+                        row.RelativeItem(); // Spacer on left
+
+                        row.ConstantItem(250f).Column(clientDetails =>
                         {
                             clientDetails.Item().Text("BILL TO")
                                 .FontSize(11)
@@ -128,7 +117,7 @@ public class InvoicePdfService
                                 .FontColor(Colors.Blue.Darken3)
                                 .AlignRight();
                             
-                            clientDetails.Item().PaddingTop(4).Text($"{client.FirstName} {client.LastName}")
+                            clientDetails.Item().PaddingTop(4f).Text($"{client.FirstName} {client.LastName}")
                                 .Bold()
                                 .AlignRight();
                             
@@ -147,29 +136,33 @@ public class InvoicePdfService
                         });
                     });
 
-                    // Items Table
-                    content.Item().PaddingTop(30).Table(table =>
+                    // Items Table with Multi-Date Support
+                    content.Item().PaddingTop(30f).Table(table =>
                     {
                         table.ColumnsDefinition(columns =>
                         {
-                            columns.RelativeColumn(6); // Description
-                            columns.RelativeColumn(2); // Code
-                            columns.RelativeColumn(3); // Amount
+                            columns.RelativeColumn(2f); // Service Date
+                            columns.RelativeColumn(4f); // Description
+                            columns.RelativeColumn(1.5f); // Code
+                            columns.RelativeColumn(1f); // Qty
+                            columns.RelativeColumn(2f); // Amount
                         });
 
                         // Table Header
                         table.Header(header =>
                         {
+                            header.Cell().Element(HeaderStyle).Text("Date");
                             header.Cell().Element(HeaderStyle).Text("Description");
                             header.Cell().Element(HeaderStyle).Text("Code");
+                            header.Cell().Element(HeaderStyle).AlignCenter().Text("Qty");
                             header.Cell().Element(HeaderStyle).AlignRight().Text("Amount");
 
                             static IContainer HeaderStyle(IContainer container)
                             {
                                 return container
                                     .Background(Colors.Blue.Darken2)
-                                    .PaddingVertical(8)
-                                    .PaddingHorizontal(4)
+                                    .PaddingVertical(8f)
+                                    .PaddingHorizontal(4f)
                                     .DefaultTextStyle(x => x.FontColor(Colors.White).FontSize(10).SemiBold());
                             }
                         });
@@ -180,8 +173,10 @@ public class InvoicePdfService
                         {
                             var backgroundColor = rowIndex % 2 == 0 ? Colors.White : Colors.Grey.Lighten4;
 
+                            table.Cell().Element(c => RowStyle(c, backgroundColor)).Text(item.ServiceDate.ToString("dd MMM yyyy"));
                             table.Cell().Element(c => RowStyle(c, backgroundColor)).Text(item.Description);
-                            table.Cell().Element(c => RowStyle(c, backgroundColor)).Text(item.Code);
+                            table.Cell().Element(c => RowStyle(c, backgroundColor)).Text(item.Code ?? "-");
+                            table.Cell().Element(c => RowStyle(c, backgroundColor)).AlignCenter().Text(item.Quantity.ToString());
                             table.Cell().Element(c => RowStyle(c, backgroundColor)).AlignRight().Text($"{item.Total:F2}");
 
                             rowIndex++;
@@ -190,20 +185,20 @@ public class InvoicePdfService
                         static IContainer RowStyle(IContainer container, string bgColor)
                         {
                             return container
-                                .BorderBottom(1)
+                                .BorderBottom(1f)
                                 .BorderColor(Colors.Grey.Lighten3)
                                 .Background(bgColor)
-                                .PaddingVertical(8)
-                                .PaddingHorizontal(4);
+                                .PaddingVertical(8f)
+                                .PaddingHorizontal(4f);
                         }
                     });
 
                     // TOTAL AREA
-                    content.Item().PaddingTop(20).AlignRight().Row(row =>
+                    content.Item().PaddingTop(20f).AlignRight().Row(row =>
                     {
-                        row.ConstantItem(250).Column(rightCol =>
+                        row.ConstantItem(250f).Column(rightCol =>
                         {
-                            rightCol.Item().Background(Colors.Grey.Lighten4).BorderTop(3).BorderColor(Colors.Blue.Darken2).Padding(15).Column(totals =>
+                            rightCol.Item().Background(Colors.Grey.Lighten4).BorderTop(3f).BorderColor(Colors.Blue.Darken2).Padding(15f).Column(totals =>
                             {
                                 totals.Item().Row(innerRow => 
                                 {
@@ -223,20 +218,20 @@ public class InvoicePdfService
                     });
 
                     // PAYMENT INFO & NOTES
-                    content.Item().PaddingTop(100).Row(row =>
+                    content.Item().PaddingTop(60f).Row(row =>
                     {
-                        row.RelativeItem(2).PaddingRight(30).Column(leftCol =>
+                        row.RelativeItem(2f).PaddingRight(30f).Column(leftCol =>
                         {
                             leftCol.Item().Text("PAYMENT INFORMATION")
                                 .FontSize(11)
                                 .Bold()
                                 .FontColor(Colors.Blue.Darken3);
                             
-                            leftCol.Item().PaddingTop(5)
+                            leftCol.Item().PaddingTop(5f)
                                 .Background(Colors.Grey.Lighten4)
-                                .BorderLeft(3)
+                                .BorderLeft(3f)
                                 .BorderColor(Colors.Blue.Darken2)
-                                .Padding(12)
+                                .Padding(12f)
                                 .Column(bankDetails =>
                                 {
                                     if (!string.IsNullOrEmpty(business.BankName))
@@ -254,32 +249,32 @@ public class InvoicePdfService
 
                             if (!string.IsNullOrEmpty(invoice.Notes))
                             {
-                                leftCol.Item().PaddingTop(20).Text("NOTES / TERMS")
+                                leftCol.Item().PaddingTop(20f).Text("NOTES / TERMS")
                                     .FontSize(10)
                                     .Bold()
                                     .FontColor(Colors.Grey.Darken3);
                                 
-                                leftCol.Item().PaddingTop(4).Text(invoice.Notes)
+                                leftCol.Item().PaddingTop(4f).Text(invoice.Notes)
                                     .Italic()
                                     .FontColor(Colors.Grey.Darken2);
                             }
                         });
 
-                        row.RelativeItem(1); 
+                        row.RelativeItem(1f); 
                     });
                 });
 
                 // Footer
-                page.Footer().PaddingTop(20).Column(footer =>
+                page.Footer().PaddingTop(20f).Column(footer =>
                 {
-                    footer.Item().BorderTop(1).BorderColor(Colors.Grey.Lighten2).PaddingTop(10).Row(row =>
+                    footer.Item().BorderTop(1f).BorderColor(Colors.Grey.Lighten2).PaddingTop(10f).Row(row =>
                     {
                         row.RelativeItem().Text("Thank you for your business!")
                             .FontSize(10)
                             .Italic()
                             .FontColor(Colors.Grey.Darken1);
 
-                        row.ConstantItem(150).AlignRight().Text($"Generated: {DateTime.Now:dd MMM yyyy HH:mm}")
+                        row.ConstantItem(150f).AlignRight().Text($"Generated: {DateTime.Now:dd MMM yyyy HH:mm}")
                             .FontSize(8)
                             .FontColor(Colors.Grey.Medium);
                     });

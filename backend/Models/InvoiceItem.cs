@@ -16,10 +16,14 @@ public class InvoiceItem : BaseModel
     public string Description { get; set; } = string.Empty;
 
     [Column("code")]
-    public string Code { get; set; } = string.Empty;
+    public string? Code { get; set; }
+
+    // ADD THIS LINE inside InvoiceItem class:
+[Column("service_date")]
+public DateTime ServiceDate { get; set; }
 
     [Column("quantity")]
-    public int Quantity { get; set; } = 1;
+    public decimal Quantity { get; set; } = 1;
 
     [Column("rate")]
     public decimal Rate { get; set; }

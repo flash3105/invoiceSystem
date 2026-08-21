@@ -58,8 +58,8 @@ namespace InvoiceSystem.Services
             sb.AppendLine($"<p><strong>Date:</strong> {invoice.CreatedAt.ToString("dd MMM yyyy")}</p>");
             sb.AppendLine($"<p><strong>Service Date:</strong> {invoice.ServiceDate.ToString("dd MMM yyyy")}</p>");
             sb.AppendLine($"<p><strong>Due Date:</strong> {invoice.DueDate.ToString("dd MMM yyyy")}</p>");
-            sb.AppendLine($"<p><strong>Procedure:</strong> {invoice.ProcedureType}</p>");
-            sb.AppendLine($"<p><strong>Procedure Code:</strong> {invoice.ProcedureCode}</p>");
+           
+           
             
             // Items
             sb.AppendLine("<div style='margin: 15px 0;'>");

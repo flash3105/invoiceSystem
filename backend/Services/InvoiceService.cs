@@ -1,3 +1,4 @@
+// Services/InvoiceService.cs
 using Supabase;
 using InvoiceSystem.Models;
 using InvoiceSystem.DTOs;
@@ -59,16 +60,13 @@ public class InvoiceService
                     // Generate invoice number (this increments the counter)
                     invoiceNumber = await GenerateInvoiceNumberAsync(supabase, businessProfile.Id);
                     
-                    // Create invoice
+                    // Create invoice (ServiceDate removed from parent invoice)
                     var invoice = new Models.Invoice
                     {
                         BusinessProfileId = businessProfile.Id,
                         ClientId = request.ClientId,
                         InvoiceNumber = invoiceNumber,
-                        ServiceDate = request.ServiceDate,
                         DueDate = request.DueDate,
-                        ProcedureType = request.ProcedureType,
-                        ProcedureCode = request.ProcedureCode,
                         Subtotal = subtotal,
                         TaxRate = request.TaxRate,
                         TaxAmount = taxAmount,
@@ -98,7 +96,6 @@ public class InvoiceService
                         throw new Exception($"Failed to create invoice after {maxRetries} attempts");
                     }
                     
-                    // Wait a bit before retrying
                     await Task.Delay(100 * retryCount);
                 }
                 catch (Exception ex)
@@ -121,12 +118,13 @@ public class InvoiceService
             if (invoiceResult == null)
                 throw new Exception("Failed to create invoice");
 
-            // Create invoice items
+            // Create invoice items (with individual ServiceDates)
             foreach (var item in request.Items)
             {
                 var invoiceItem = new Models.InvoiceItem
                 {
                     InvoiceId = invoiceResult.Id,
+                    ServiceDate = item.ServiceDate, // <-- Mapped from request item
                     Description = item.Description,
                     Code = item.Code,
                     Quantity = item.Quantity,
@@ -159,12 +157,10 @@ public class InvoiceService
         {
             var supabase = await SupabaseClientFactory.GetClientAsync();
 
-            // Get business profile for this user
             var businessProfile = await _businessProfileService.GetByUserIdAsync(userId);
             if (businessProfile == null)
                 return null;
 
-            // Get invoice
             var invoiceResult = await supabase
                 .From<Models.Invoice>()
                 .Where(x => x.Id == id && x.BusinessProfileId == businessProfile.Id)
@@ -174,13 +170,11 @@ public class InvoiceService
             if (invoice == null)
                 return null;
 
-            // Get invoice items
             var itemsResult = await supabase
                 .From<Models.InvoiceItem>()
                 .Where(x => x.InvoiceId == id)
                 .Get();
 
-            // Get client
             var client = await _clientService.GetClientByIdAsync(invoice.ClientId, userId);
 
             return MapToDto(invoice, itemsResult.Models, client);
@@ -198,12 +192,10 @@ public class InvoiceService
         {
             var supabase = await SupabaseClientFactory.GetClientAsync();
 
-            // Get business profile for this user
             var businessProfile = await _businessProfileService.GetByUserIdAsync(userId);
             if (businessProfile == null)
                 return new List<InvoiceDto>();
 
-            // Build query
             var query = supabase
                 .From<Models.Invoice>()
                 .Where(x => x.BusinessProfileId == businessProfile.Id)
@@ -253,12 +245,10 @@ public class InvoiceService
             if (invoice == null)
                 return false;
 
-            // Check if user owns this invoice
             var businessProfile = await _businessProfileService.GetByUserIdAsync(userId);
             if (businessProfile == null || invoice.BusinessProfileId != businessProfile.Id)
                 return false;
 
-            // Validate status
             var validStatuses = new[] { "Draft", "Sent", "Pending", "PartiallyPaid", "Paid", "Overdue", "Cancelled" };
             if (!validStatuses.Contains(status))
                 throw new Exception($"Invalid status: {status}");
@@ -266,7 +256,6 @@ public class InvoiceService
             invoice.Status = status;
             invoice.UpdatedAt = DateTime.UtcNow;
 
-            // Add status-specific fields
             switch (status)
             {
                 case "Sent":
@@ -316,12 +305,8 @@ public class InvoiceService
         };
     }
 
-    /// <summary>
-    /// Generates the next invoice number and increments the counter atomically
-    /// </summary>
     private async Task<string> GenerateInvoiceNumberAsync(Supabase.Client supabase, int businessProfileId)
     {
-        // Get the business profile with the latest counter
         var profileResult = await supabase
             .From<BusinessProfile>()
             .Where(x => x.Id == businessProfileId)
@@ -331,17 +316,14 @@ public class InvoiceService
         if (profile == null)
             throw new Exception("Business profile not found");
 
-        // Increment counter
         profile.InvoiceNumberCounter += 1;
         profile.UpdatedAt = DateTime.UtcNow;
         
-        // Update the profile
         await supabase
             .From<BusinessProfile>()
             .Where(x => x.Id == businessProfileId)
             .Update(profile);
 
-        // Generate invoice number
         var year = DateTime.UtcNow.Year;
         var paddedNumber = profile.InvoiceNumberCounter.ToString("D4");
         var invoiceNumber = $"{profile.InvoicePrefix}{year}-{paddedNumber}";
@@ -360,10 +342,7 @@ public class InvoiceService
             BusinessProfileId = invoice.BusinessProfileId,
             ClientId = invoice.ClientId,
             InvoiceNumber = invoice.InvoiceNumber,
-            ServiceDate = invoice.ServiceDate,
             DueDate = invoice.DueDate,
-            ProcedureType = invoice.ProcedureType,
-            ProcedureCode = invoice.ProcedureCode,
             Subtotal = invoice.Subtotal,
             TaxRate = invoice.TaxRate,
             TaxAmount = invoice.TaxAmount,
@@ -382,9 +361,10 @@ public class InvoiceService
             {
                 Id = item.Id,
                 InvoiceId = item.InvoiceId,
+                ServiceDate = item.ServiceDate, // <-- Mapped for the DTO
                 Description = item.Description,
                 Code = item.Code,
-                Quantity = item.Quantity,
+                Quantity = (int)item.Quantity,
                 Rate = item.Rate,
                 Total = item.Total
             }).ToList()

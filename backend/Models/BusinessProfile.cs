@@ -22,10 +22,9 @@ public class BusinessProfile : BaseModel
     public string PhoneNumber { get; set; } = string.Empty;
 
     [Column("vat_number")]
-    public string VatNumber { get; set; } = string.Empty;
+    public string? VatNumber { get; set; } = string.Empty;
 
-    [Column("practice_number")]  // ← NEW: Practice Number field
-    public string PracticeNumber { get; set; } = string.Empty;
+    
 
     [Column("account_number")]
     public string AccountNumber { get; set; } = string.Empty;

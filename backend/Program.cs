@@ -54,6 +54,8 @@ builder.Services.AddScoped<InvoicePdfService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<InvoiceEmailService>();
 
+builder.Services.AddScoped<SupabaseStorageService>();
+
 builder.Services.AddHttpClient<EmailService>();
 
 // ========== CORS Configuration from .env ==========

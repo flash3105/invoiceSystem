@@ -18,17 +18,11 @@ public class Invoice : BaseModel
     [Column("invoice_number")]
     public string InvoiceNumber { get; set; } = string.Empty;
 
-    [Column("service_date")]
-    public DateTime ServiceDate { get; set; }
+  
 
     [Column("due_date")]
     public DateTime DueDate { get; set; }
 
-    [Column("procedure_type")]
-    public string ProcedureType { get; set; } = string.Empty;
-
-    [Column("procedure_code")]
-    public string ProcedureCode { get; set; } = string.Empty;
 
     [Column("subtotal")]
     public decimal Subtotal { get; set; }
