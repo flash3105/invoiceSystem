@@ -21,4 +21,5 @@ public class BusinessProfileDto
     public string Currency { get; set; } = "ZAR";
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public string? DefaultNotes { get; set; }
 }

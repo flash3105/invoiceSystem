@@ -158,6 +158,7 @@ public async Task<IActionResult> GetBusinessProfile()
             InvoiceNumberCounter = profile.InvoiceNumberCounter,
             Currency = profile.Currency,
             CreatedAt = profile.CreatedAt,
+            DefaultNotes = profile.DefaultNotes,
             UpdatedAt = profile.UpdatedAt
         };
 
@@ -195,6 +196,7 @@ public async Task<IActionResult> UpdateBusinessProfile([FromBody] UpdateBusiness
             AccountHolderName = updateDto.AccountHolderName,
             BusinessEmail = updateDto.BusinessEmail,
             LogoUrl = updateDto.LogoUrl,
+            DefaultNotes = updateDto.DefaultNotes,
             Currency = updateDto.Currency
         };
 
@@ -225,6 +227,7 @@ public async Task<IActionResult> UpdateBusinessProfile([FromBody] UpdateBusiness
                 LogoUrl = profile.LogoUrl,
                 InvoicePrefix = profile.InvoicePrefix,
                 InvoiceNumberCounter = profile.InvoiceNumberCounter,
+                DefaultNotes = profile.DefaultNotes,
                 Currency = profile.Currency,
                 CreatedAt = profile.CreatedAt,
                 UpdatedAt = profile.UpdatedAt

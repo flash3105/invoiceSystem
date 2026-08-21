@@ -44,6 +44,9 @@ public class BusinessProfile : BaseModel
     [Column("logo_url")]
     public string? LogoUrl { get; set; }
 
+    [Column("default_notes")]
+    public string? DefaultNotes { get; set; }
+
     [Column("invoice_prefix")]
     public string InvoicePrefix { get; set; } = "INV-";
 
@@ -58,4 +61,6 @@ public class BusinessProfile : BaseModel
 
     [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+
 }
