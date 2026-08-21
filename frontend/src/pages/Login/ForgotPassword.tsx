@@ -123,7 +123,7 @@ export const ForgotPassword: React.FC = () => {
 
           <div className={styles.registerLink}>
             <p>
-              <Link to="/login" className={styles.link}>
+              <Link to="/" className={styles.link}>
                 <ArrowLeft size={16} />
                 Back to Login
               </Link>

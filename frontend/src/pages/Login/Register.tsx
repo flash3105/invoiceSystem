@@ -160,7 +160,7 @@ export const Register: React.FC = () => {
       if (!response.ok) throw new Error(data.message || 'Registration failed');
 
       setSuccess('Registration successful! Redirecting to login...');
-      setTimeout(() => navigate('/'), 2000);
+      setTimeout(() => navigate('/'), 3000);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred during registration');
