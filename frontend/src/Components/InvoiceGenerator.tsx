@@ -755,7 +755,7 @@ export const InvoiceGenerator: React.FC = () => {
                     />
                   </div>
                   <div className={styles.formGroup}>
-                    <label><DollarSign size={14} /> Rate (ZAR) *</label>
+                    <label> Rate (ZAR) *</label>
                     <input
                       type="number"
                       placeholder="0.00"

@@ -102,7 +102,6 @@ export const Register: React.FC = () => {
     if (!formData.businessName.trim()) { setError('Business name is required'); return false; }
     if (!formData.businessAddress.trim()) { setError('Business address is required'); return false; }
     if (!formData.phoneNumber.trim()) { setError('Phone number is required'); return false; }
-    if (!formData.vatNumber.trim()) { setError('VAT number is required'); return false; }
     if (!formData.accountNumber.trim()) { setError('Account number is required'); return false; }
     return true;
   };
@@ -285,7 +284,7 @@ export const Register: React.FC = () => {
                     >
                       <UploadCloud size={24} color="var(--primary)" style={{ marginBottom: '8px' }} />
                       <p style={{ margin: 0, fontSize: '14px', color: 'var(--gray-600)', fontWeight: 500 }}>Click to upload logo</p>
-                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--gray-400)', marginTop: '4px' }}>SVG, PNG, JPG (max 5MB)</p>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--gray-400)', marginTop: '4px' }}>SVG, PNG, JPG (max 1MB)</p>
                     </div>
                   )}
                   
@@ -327,10 +326,10 @@ export const Register: React.FC = () => {
 
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
-                  <label htmlFor="vatNumber" className={styles.label}><FileText size={18} /> VAT Number *</label>
+                  <label htmlFor="vatNumber" className={styles.label}><FileText size={18} /> VAT Number </label>
                   <div className={styles.inputWrapper}>
                     <FileText className={styles.inputIcon} size={20} />
-                    <input id="vatNumber" name="vatNumber" type="text" value={formData.vatNumber} onChange={handleChange} placeholder="e.g., VAT-123456789" className={styles.input} disabled={isLoading} required />
+                    <input id="vatNumber" name="vatNumber" type="text" value={formData.vatNumber} onChange={handleChange} placeholder="e.g., VAT-123456789" className={styles.input} disabled={isLoading}  />
                   </div>
                 </div>
               </div>
