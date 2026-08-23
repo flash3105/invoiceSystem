@@ -1,6 +1,6 @@
 // src/pages/Dashboard/Dashboard.tsx
 import React, { useState, useEffect } from 'react';
-import { LogOut, FileText, PlusCircle, Settings, Menu, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { LogOut, FileText, PlusCircle, Settings, Menu, X, AlertCircle, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import styles from './Dashboard.module.css';
 
 // Components
@@ -12,6 +12,11 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 type TabType = 'generate' | 'invoices' | 'settings';
 
+export interface CustomField {
+  label: string;
+  value: string;
+}
+
 // Business Profile Interface
 interface BusinessProfile {
   id?: number;
@@ -19,7 +24,7 @@ interface BusinessProfile {
   businessName: string;
   businessAddress: string;
   phoneNumber: string;
-  vatNumber: string;
+  vatNumber?: string; // Made optional/legacy
   accountNumber: string;
   bankName?: string;
   branchCode?: string;
@@ -29,6 +34,7 @@ interface BusinessProfile {
   invoicePrefix?: string;
   invoiceNumberCounter?: number;
   defaultNotes?: string;
+  customFields?: CustomField[]; // <-- New Custom Fields Array
   currency: string;
   createdAt?: string;
   updatedAt?: string;
@@ -58,10 +64,6 @@ const Dashboard: React.FC = () => {
         email: email
       });
     }
-    
-    // Log authentication status
-    console.log('User email:', email);
-    console.log('Auth token present:', !!token);
   }, []);
 
   const handleLogout = () => {
@@ -196,13 +198,14 @@ const SettingsPage: React.FC = () => {
     businessName: '',
     businessAddress: '',
     phoneNumber: '',
-    vatNumber: '',
+    vatNumber: '', // Keeping it here just in case they have legacy data
     accountNumber: '',
     bankName: '',
     branchCode: '',
     accountHolderName: '',
     businessEmail: '',
     defaultNotes: '',
+    customFields: [],
     currency: 'ZAR'
   });
 
@@ -210,12 +213,10 @@ const SettingsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Get auth token - try both storage locations
   const getAuthToken = () => {
     return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
   };
 
-  // Load business profile on mount
   useEffect(() => {
     loadBusinessProfile();
   }, []);
@@ -225,16 +226,12 @@ const SettingsPage: React.FC = () => {
       setLoading(true);
       const token = getAuthToken();
       
-      console.log('Auth token present:', !!token);
-      
       if (!token) {
         setMessage({ type: 'error', text: 'Please login to continue' });
         setLoading(false);
         return;
       }
 
-      console.log('Loading business profile from:', `${API_URL}/api/auth/business-profile`);
-      
       const response = await fetch(`${API_URL}/api/auth/business-profile`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -242,18 +239,12 @@ const SettingsPage: React.FC = () => {
         },
       });
 
-      console.log('Response status:', response.status);
-
       if (response.status === 401) {
-        // Token expired or invalid
         localStorage.removeItem('auth_token');
         sessionStorage.removeItem('auth_token');
         setMessage({ type: 'error', text: 'Session expired. Please login again.' });
         setLoading(false);
-        // Redirect to login after delay
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 2000);
+        setTimeout(() => window.location.href = '/', 2000);
         return;
       }
 
@@ -263,13 +254,11 @@ const SettingsPage: React.FC = () => {
         return;
       }
 
-      if (!response.ok) {
-        throw new Error(`Failed to load business profile: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Failed to load business profile: ${response.status}`);
 
       const data = await response.json();
-      console.log('Business profile loaded:', data);
-      setBusinessProfile(data);
+      // Ensure customFields is always an array
+      setBusinessProfile({ ...data, customFields: data.customFields || [] });
       setMessage(null);
     } catch (err) {
       console.error('Error loading business profile:', err);
@@ -279,18 +268,43 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-  const { name, value } = e.target;
-  setBusinessProfile(prev => ({ ...prev, [name]: value }));
-};
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setBusinessProfile(prev => ({ ...prev, [name]: value }));
+  };
+
+  // --- CUSTOM FIELD HANDLERS ---
+  const handleAddCustomField = () => {
+    if ((businessProfile.customFields?.length || 0) < 5) {
+      setBusinessProfile(prev => ({
+        ...prev,
+        customFields: [...(prev.customFields || []), { label: '', value: '' }]
+      }));
+    }
+  };
+
+  const handleRemoveCustomField = (indexToRemove: number) => {
+    setBusinessProfile(prev => ({
+      ...prev,
+      customFields: prev.customFields?.filter((_, index) => index !== indexToRemove)
+    }));
+  };
+
+  const handleCustomFieldChange = (index: number, field: 'label' | 'value', val: string) => {
+    setBusinessProfile(prev => {
+      const updatedFields = [...(prev.customFields || [])];
+      updatedFields[index] = { ...updatedFields[index], [field]: val };
+      return { ...prev, customFields: updatedFields };
+    });
+  };
+  // ------------------------------
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
+    // Removed vatNumber from strict required checks
     if (!businessProfile.businessName || !businessProfile.businessAddress || 
-        !businessProfile.phoneNumber || !businessProfile.vatNumber || 
-        !businessProfile.accountNumber) {
+        !businessProfile.phoneNumber || !businessProfile.accountNumber) {
       setMessage({ type: 'error', text: 'Please fill in all required fields' });
       return;
     }
@@ -300,29 +314,17 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElemen
 
     try {
       const token = getAuthToken();
-      if (!token) {
-        setMessage({ type: 'error', text: 'Please login to continue' });
-        setSaving(false);
-        return;
-      }
+      if (!token) return;
 
-      // Prepare the data
+      // Clean up empty fields before sending to API
+      const cleanedCustomFields = (businessProfile.customFields || []).filter(
+        field => field.label.trim() !== '' || field.value.trim() !== ''
+      );
+
       const updateData = {
-        businessName: businessProfile.businessName,
-        businessAddress: businessProfile.businessAddress,
-        phoneNumber: businessProfile.phoneNumber,
-        vatNumber: businessProfile.vatNumber,
-        accountNumber: businessProfile.accountNumber,
-        currency: businessProfile.currency,
-        bankName: businessProfile.bankName || '',
-        branchCode: businessProfile.branchCode || '',
-        accountHolderName: businessProfile.accountHolderName || '',
-        defaultNotes: businessProfile.defaultNotes || '',
-        businessEmail: businessProfile.businessEmail || '',
+        ...businessProfile,
+        customFields: cleanedCustomFields,
       };
-
-      console.log('Updating business profile at:', `${API_URL}/api/auth/business-profile`);
-      console.log('Update data:', updateData);
 
       const response = await fetch(`${API_URL}/api/auth/business-profile`, {
         method: 'PUT',
@@ -333,15 +335,11 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElemen
         body: JSON.stringify(updateData),
       });
 
-      console.log('Response status:', response.status);
-
       if (response.status === 401) {
         localStorage.removeItem('auth_token');
         sessionStorage.removeItem('auth_token');
         setMessage({ type: 'error', text: 'Session expired. Please login again.' });
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 2000);
+        setTimeout(() => window.location.href = '/', 2000);
         return;
       }
 
@@ -357,7 +355,7 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElemen
       }
 
       const updatedProfile = await response.json();
-      setBusinessProfile(updatedProfile);
+      setBusinessProfile({ ...updatedProfile, customFields: updatedProfile.customFields || [] });
       setMessage({ type: 'success', text: 'Business profile updated successfully!' });
       
       setTimeout(() => setMessage(null), 3000);
@@ -396,12 +394,7 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElemen
             <AlertCircle size={18} style={{ flexShrink: 0 }} />
           )}
           <span>{message.text}</span>
-          <button 
-            className={styles.closeMessage} 
-            onClick={() => setMessage(null)}
-          >
-            ×
-          </button>
+          <button className={styles.closeMessage} onClick={() => setMessage(null)}>×</button>
         </div>
       )}
 
@@ -410,67 +403,78 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElemen
           <div className={styles.settingsGroup}>
             <label>Business Name *</label>
             <input 
-              type="text" 
-              name="businessName" 
-              value={businessProfile.businessName} 
-              onChange={handleChange} 
-              required 
-              placeholder="Enter business name"
+              type="text" name="businessName" value={businessProfile.businessName} onChange={handleChange} required placeholder="Enter business name"
             />
           </div>
           <div className={styles.settingsGroup}>
             <label>Business Email</label>
             <input 
-              type="email" 
-              name="businessEmail" 
-              value={businessProfile.businessEmail || ''} 
-              onChange={handleChange} 
-              placeholder="business@example.com"
+              type="email" name="businessEmail" value={businessProfile.businessEmail || ''} onChange={handleChange} placeholder="business@example.com"
             />
           </div>
           <div className={styles.settingsGroup}>
             <label>Business Address *</label>
             <input 
-              type="text" 
-              name="businessAddress" 
-              value={businessProfile.businessAddress} 
-              onChange={handleChange} 
-              required 
-              placeholder="123 Main St, City, Country"
+              type="text" name="businessAddress" value={businessProfile.businessAddress} onChange={handleChange} required placeholder="123 Main St, City, Country"
             />
           </div>
           <div className={styles.settingsGroup}>
             <label>Phone Number *</label>
             <input 
-              type="tel" 
-              name="phoneNumber" 
-              value={businessProfile.phoneNumber} 
-              onChange={handleChange} 
-              required 
-              placeholder="+27 12 345 6789"
-            />
-          </div>
-          <div className={styles.settingsGroup}>
-            <label>VAT Number *</label>
-            <input 
-              type="text" 
-              name="vatNumber" 
-              value={businessProfile.vatNumber} 
-              onChange={handleChange} 
-              required 
-              placeholder="VAT-1234567"
+              type="tel" name="phoneNumber" value={businessProfile.phoneNumber} onChange={handleChange} required placeholder="+27 12 345 6789"
             />
           </div>
           <div className={styles.settingsGroup}>
             <label>Currency</label>
             <input 
-              type="text" 
-              name="currency" 
-              value={businessProfile.currency} 
-              onChange={handleChange} 
-              placeholder="ZAR"
+              type="text" name="currency" value={businessProfile.currency} onChange={handleChange} placeholder="ZAR"
             />
           </div>
+        </div>
+
+        {/* --- CUSTOM FIELDS UI --- */}
+        <h3 className={styles.sectionTitle} style={{ marginTop: '24px' }}>Custom Fields</h3>
+        <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
+          Add up to 5 specific details like VAT Number, Practice Number, or PO Number.
+        </p>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+          {businessProfile.customFields?.map((field, index) => (
+            <div key={index} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <input
+                type="text"
+                placeholder="Field Name (e.g. VAT No)"
+                value={field.label}
+                onChange={(e) => handleCustomFieldChange(index, 'label', e.target.value)}
+                style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
+              />
+              <input
+                type="text"
+                placeholder="Value (e.g. 412345678)"
+                value={field.value}
+                onChange={(e) => handleCustomFieldChange(index, 'value', e.target.value)}
+                style={{ flex: 2, padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}
+              />
+              <button 
+                type="button" 
+                onClick={() => handleRemoveCustomField(index)}
+                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '8px' }}
+                title="Remove field"
+              >
+                <Trash2 size={20} />
+              </button>
+            </div>
+          ))}
+
+          {(!businessProfile.customFields || businessProfile.customFields.length < 5) && (
+            <button 
+              type="button" 
+              onClick={handleAddCustomField}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', alignSelf: 'flex-start', padding: '8px 12px', background: '#f1f5f9', border: '1px dashed #cbd5e1', borderRadius: '6px', color: '#475569', cursor: 'pointer', fontWeight: 500 }}
+            >
+              <Plus size={16} /> Add Custom Field
+            </button>
+          )}
         </div>
 
         <h3 className={styles.sectionTitle}>Bank Account Details</h3>
@@ -478,46 +482,30 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElemen
           <div className={styles.settingsGroup}>
             <label>Bank Name</label>
             <input 
-              type="text" 
-              name="bankName" 
-              value={businessProfile.bankName || ''} 
-              onChange={handleChange} 
-              placeholder="First National Bank"
+              type="text" name="bankName" value={businessProfile.bankName || ''} onChange={handleChange} placeholder="First National Bank"
             />
           </div>
           <div className={styles.settingsGroup}>
             <label>Account Holder Name</label>
             <input 
-              type="text" 
-              name="accountHolderName" 
-              value={businessProfile.accountHolderName || ''} 
-              onChange={handleChange} 
-              placeholder="John Doe"
+              type="text" name="accountHolderName" value={businessProfile.accountHolderName || ''} onChange={handleChange} placeholder="John Doe"
             />
           </div>
           <div className={styles.settingsGroup}>
             <label>Account Number *</label>
             <input 
-              type="text" 
-              name="accountNumber" 
-              value={businessProfile.accountNumber} 
-              onChange={handleChange} 
-              required 
-              placeholder="1234567890"
+              type="text" name="accountNumber" value={businessProfile.accountNumber} onChange={handleChange} required placeholder="1234567890"
             />
           </div>
           <div className={styles.settingsGroup}>
             <label>Branch Code</label>
             <input 
-              type="text" 
-              name="branchCode" 
-              value={businessProfile.branchCode || ''} 
-              onChange={handleChange} 
-              placeholder="123456"
+              type="text" name="branchCode" value={businessProfile.branchCode || ''} onChange={handleChange} placeholder="123456"
             />
           </div>
         </div>
-      <h3 className={styles.sectionTitle}>Invoice Preferences</h3>
+
+        <h3 className={styles.sectionTitle}>Invoice Preferences</h3>
         <div className={styles.settingsGrid} style={{ display: 'block' }}>
           <div className={styles.settingsGroup}>
             <label>Default Notes / Terms & Conditions</label>
@@ -541,9 +529,7 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElemen
         </div>
         <div className={styles.formActions}>
           <button 
-            type="submit" 
-            className={styles.settingsSaveButton} 
-            disabled={saving}
+            type="submit" className={styles.settingsSaveButton} disabled={saving}
           >
             {saving ? 'Saving...' : 'Save Changes'}
           </button>

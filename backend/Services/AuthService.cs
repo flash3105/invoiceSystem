@@ -271,6 +271,7 @@ public class AuthService
             existingProfile.InvoicePrefix = updatedProfile.InvoicePrefix ?? existingProfile.InvoicePrefix;
             existingProfile.Currency = updatedProfile.Currency ?? existingProfile.Currency;
             existingProfile.DefaultNotes = updatedProfile.DefaultNotes ?? existingProfile.DefaultNotes;
+            existingProfile.CustomFields = updatedProfile.CustomFields ?? existingProfile.CustomFields;
             existingProfile.UpdatedAt = DateTime.UtcNow;
 
             await supabase.From<BusinessProfile>().Update(existingProfile);

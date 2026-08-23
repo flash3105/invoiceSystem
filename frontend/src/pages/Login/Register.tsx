@@ -16,7 +16,6 @@ interface RegisterFormData {
   businessName: string;
   businessAddress: string;
   phoneNumber: string;
-  vatNumber: string;
   accountNumber: string;
   bankName: string;
   branchCode: string;
@@ -34,7 +33,6 @@ export const Register: React.FC = () => {
     businessName: '',
     businessAddress: '',
     phoneNumber: '',
-    vatNumber: '',
     accountNumber: '',
     bankName: '',
     branchCode: '',
@@ -135,7 +133,6 @@ export const Register: React.FC = () => {
       submitData.append('businessProfile.businessName', formData.businessName);
       submitData.append('businessProfile.businessAddress', formData.businessAddress);
       submitData.append('businessProfile.phoneNumber', formData.phoneNumber);
-      submitData.append('businessProfile.vatNumber', formData.vatNumber);
       submitData.append('businessProfile.accountNumber', formData.accountNumber);
       submitData.append('businessProfile.bankName', formData.bankName);
       submitData.append('businessProfile.branchCode', formData.branchCode);
@@ -324,15 +321,7 @@ export const Register: React.FC = () => {
                 </div>
               </div>
 
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label htmlFor="vatNumber" className={styles.label}><FileText size={18} /> VAT Number </label>
-                  <div className={styles.inputWrapper}>
-                    <FileText className={styles.inputIcon} size={20} />
-                    <input id="vatNumber" name="vatNumber" type="text" value={formData.vatNumber} onChange={handleChange} placeholder="e.g., VAT-123456789" className={styles.input} disabled={isLoading}  />
-                  </div>
-                </div>
-              </div>
+              
 
               <div className={styles.formGroup}>
                 <label htmlFor="accountNumber" className={styles.label}><CreditCard size={18} /> Account Number *</label>

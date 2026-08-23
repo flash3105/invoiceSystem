@@ -17,4 +17,6 @@ public class UpdateBusinessProfileDto
     public IFormFile? LogoFile { get; set; }
     public string Currency { get; set; } = "ZAR";
     public string? DefaultNotes { get; set; }
+
+    public List<CustomField>? CustomFields { get; set; }
 }

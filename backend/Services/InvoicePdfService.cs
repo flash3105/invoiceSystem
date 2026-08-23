@@ -1,6 +1,8 @@
 // Services/InvoicePdfService.cs
 using System;
 using System.IO;
+using System.Linq; // <-- Added to help check lists
+using System.Collections.Generic;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -53,7 +55,6 @@ public class InvoicePdfService
                                 catch
                                 {
                                     // Silently fail and skip the logo if the download fails
-                                    // This ensures the PDF still generates even if the image link is broken
                                 }
                             }
                             // ----------------------------------
@@ -69,8 +70,27 @@ public class InvoicePdfService
                             logoCol.Item().Text($"Phone: {business.PhoneNumber} | Email: {business.BusinessEmail ?? "N/A"}")
                                 .FontColor(Colors.Grey.Darken2);
                             
-                            logoCol.Item().Text($"VAT: {business.VatNumber}")
-                                .FontColor(Colors.Grey.Darken2);
+                            // --- LEGACY VAT (Only shows if they still have old data) ---
+                            if (!string.IsNullOrWhiteSpace(business.VatNumber))
+                            {
+                                logoCol.Item().Text($"VAT: {business.VatNumber}")
+                                    .FontColor(Colors.Grey.Darken2);
+                            }
+
+                            // --- NEW DYNAMIC CUSTOM FIELDS ---
+                            if (business.CustomFields != null && business.CustomFields.Any())
+                            {
+                                foreach (var field in business.CustomFields)
+                                {
+                                    // Only print if both label and value have text
+                                    if (!string.IsNullOrWhiteSpace(field.Label) && !string.IsNullOrWhiteSpace(field.Value))
+                                    {
+                                        logoCol.Item().Text($"{field.Label}: {field.Value}")
+                                            .FontColor(Colors.Grey.Darken2);
+                                    }
+                                }
+                            }
+                            // ---------------------------------
                         });
                         
                         // Invoice details on the right

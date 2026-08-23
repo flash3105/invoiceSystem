@@ -77,7 +77,6 @@ public class AuthController : ControllerBase
             string.IsNullOrEmpty(request.BusinessProfile.BusinessName) ||
             string.IsNullOrEmpty(request.BusinessProfile.BusinessAddress) ||
             string.IsNullOrEmpty(request.BusinessProfile.PhoneNumber) ||
-            string.IsNullOrEmpty(request.BusinessProfile.VatNumber) ||
             string.IsNullOrEmpty(request.BusinessProfile.AccountNumber))
         {
             return BadRequest(new { message = "All business profile fields are required" });
@@ -147,7 +146,6 @@ public async Task<IActionResult> GetBusinessProfile()
             BusinessName = profile.BusinessName,
             BusinessAddress = profile.BusinessAddress,
             PhoneNumber = profile.PhoneNumber,
-            VatNumber = profile.VatNumber,
             AccountNumber = profile.AccountNumber,
             BankName = profile.BankName,
             BranchCode = profile.BranchCode,
@@ -189,9 +187,9 @@ public async Task<IActionResult> UpdateBusinessProfile([FromBody] UpdateBusiness
             BusinessName = updateDto.BusinessName,
             BusinessAddress = updateDto.BusinessAddress,
             PhoneNumber = updateDto.PhoneNumber,
-            VatNumber = updateDto.VatNumber,
             AccountNumber = updateDto.AccountNumber,
             BankName = updateDto.BankName,
+            CustomFields = updateDto.CustomFields,
             BranchCode = updateDto.BranchCode,
             AccountHolderName = updateDto.AccountHolderName,
             BusinessEmail = updateDto.BusinessEmail,
@@ -218,7 +216,7 @@ public async Task<IActionResult> UpdateBusinessProfile([FromBody] UpdateBusiness
                 BusinessName = profile.BusinessName,
                 BusinessAddress = profile.BusinessAddress,
                 PhoneNumber = profile.PhoneNumber,
-                VatNumber = profile.VatNumber,
+                CustomFields = profile.CustomFields,
                 AccountNumber = profile.AccountNumber,
                 BankName = profile.BankName,
                 BranchCode = profile.BranchCode,
