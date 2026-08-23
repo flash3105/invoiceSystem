@@ -166,20 +166,10 @@ const Login: React.FC = () => {
               </div>
             </div>
 
+            {/* ONLY Forgot Password stays here now */}
             <div className={styles.loginOptions}>
-              <label className={styles.rememberMe}>
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-                <span>Remember me</span>
-              </label>
               <Link to="/forgot-password" className={styles.forgotPassword}>
                 Forgot password?
-              </Link>
-              <Link to ="/register" className={styles.registerLink}>
-                Don't have an account? Register
               </Link>
             </div>
 
@@ -199,15 +189,22 @@ const Login: React.FC = () => {
             </button>
           </form>
 
-        
+          {/* Registration link moved outside the form, below the button */}
+          <div className={styles.registerContainer}>
+            <p>
+              Don't have an account?{' '}
+              <Link to="/register" className={styles.registerLink}>
+                Register
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
 
       <div className={styles.loginFooter}>
-        <p>© {new Date().getFullYear()} Invoice System. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} Rvestfundgroup. All rights reserved.</p>
       </div>
     </div>
   );
 };
-
 export default Login;

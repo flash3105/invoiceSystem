@@ -161,27 +161,13 @@
   outline: none;
 }
 
+/* Updated login options to push Forgot Password to the right */
 .loginOptions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end; 
   align-items: center;
   margin-top: 4px;
-}
-
-.rememberMe {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #1a2332;
-  cursor: pointer;
-}
-
-.rememberMe input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: #1a3a5c;
+  margin-bottom: 8px;
 }
 
 .forgotPassword {
@@ -190,19 +176,7 @@
   text-decoration: none;
   font-weight: 500;
   transition: color 0.2s;
-}
-.registerLink {
-  font-size: 12px;
-  margin-bottom: 25px;
-  color: #1a3a5c;
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s;
-}
-
-.registerLink:hover {
-  color: #0d1b2a;
-  text-decoration: underline;
+  margin: 0; 
 }
 
 .forgotPassword:hover {
@@ -261,27 +235,31 @@
   }
 }
 
-.registerLink {
+/* NEW: Container for the register prompt */
+.registerContainer {
   text-align: center;
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid #dce4ec;
+  border-top: 1px solid #e2e8f0;
 }
 
-.registerLink p {
+.registerContainer p {
   font-size: 14px;
   color: #4a6a8b;
   margin: 0;
 }
 
-.link {
+/* Updated Register Link Style */
+.registerLink {
+  font-size: 14px;
   color: #1a3a5c;
   font-weight: 600;
   text-decoration: none;
   transition: color 0.2s;
+  margin-left: 4px;
 }
 
-.link:hover {
+.registerLink:hover {
   color: #0d1b2a;
   text-decoration: underline;
 }
@@ -322,7 +300,6 @@
   }
 }
 
-/* Add to Login.module.css */
 .loginSuccessAlert {
   display: flex;
   align-items: center;
