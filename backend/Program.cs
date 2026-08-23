@@ -65,7 +65,7 @@ var allowedOrigins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS")?
     .ToArray() ?? new[] { 
         "http://localhost:5173", 
         "http://localhost:3000",
-        "https://hsholdings.co.za"
+        "https://invoice.rvestfundgroup.co.za"
     };
 
 Console.WriteLine($"CORS Allowed Origins: {string.Join(", ", allowedOrigins)}");
