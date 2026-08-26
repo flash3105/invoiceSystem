@@ -521,6 +521,9 @@
    RESPONSIVE BREAKPOINTS
    ============================================ */
 
+
+   
+
 /* Tablets - Make table more compact */
 @media (max-width: 1024px) {
   .invoiceTable {
@@ -601,6 +604,19 @@
   .refreshButton {
     padding: 6px 12px;
     font-size: 13px;
+  }
+
+  .summaryCardsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .searchWrapper {
+    width: 100%;
+    min-width: unset;
+  }
+  
+  .truncateText {
+    max-width: 150px;
   }
 }
 
@@ -713,6 +729,111 @@
   }
 }
 
+
+/* ============================================
+   SEARCH INPUT
+   ============================================ */
+.searchWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--gray-200, #e5e7eb);
+  transition: var(--transition, all 0.2s ease);
+  min-width: 260px;
+}
+
+.searchWrapper:focus-within {
+  border-color: var(--primary, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.searchIcon {
+  color: var(--gray-400, #9ca3af);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  font-size: 14px;
+  color: var(--gray-900, #1f2937);
+}
+
+.searchInput::placeholder {
+  color: var(--gray-400, #9ca3af);
+}
+
+/* ============================================
+   SUMMARY CARDS
+   ============================================ */
+.summaryCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summaryCard {
+  background: white;
+  border-radius: var(--radius-sm, 10px);
+  padding: 18px 20px;
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-left-width: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.summaryCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.summaryCardTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-500, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summaryCardAmount {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--gray-900, #1f2937);
+}
+
+/* ============================================
+   DESCRIPTION & CODE COLUMNS
+   ============================================ */
+.truncateText {
+  display: block;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--gray-700, #374151);
+  font-size: 13px;
+}
+
+.codeBadge {
+  background: var(--gray-100, #f3f4f6);
+  border: 1px solid var(--gray-200, #e5e7eb);
+  color: var(--gray-700, #374151);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.5px;
+}
 /* ============================================
    DARK MODE SUPPORT
    ============================================ */
@@ -856,5 +977,36 @@
   .statusPartiallyPaid {
     background: #78350f !important;
     color: #f59e0b !important;
+  }
+  .searchWrapper {
+    background: var(--gray-50, #1a1a2e);
+    border-color: var(--gray-200, #1e293b);
+  }
+  
+  .searchInput {
+    color: var(--gray-800, #f1f5f9);
+  }
+
+  .summaryCard {
+    background: var(--gray-50, #1a1a2e);
+    border-color: var(--gray-200, #1e293b);
+  }
+
+  .summaryCardTitle {
+    color: var(--gray-400, #94a3b8);
+  }
+
+  .summaryCardAmount {
+    color: var(--gray-800, #f1f5f9);
+  }
+
+  .codeBadge {
+    background: var(--gray-100, #16213e);
+    border-color: var(--gray-200, #1e293b);
+    color: var(--gray-600, #cbd5e1);
+  }
+
+  .truncateText {
+    color: var(--gray-600, #cbd5e1);
   }
 }

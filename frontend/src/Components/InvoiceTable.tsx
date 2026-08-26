@@ -1,6 +1,6 @@
 // src/Components/InvoiceTable.tsx
-import React, { useState, useEffect } from 'react';
-import { Eye, Download, Mail, CheckCircle, Clock, AlertCircle, Search, Filter, FileText, Edit3, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Eye, Download, Mail, CheckCircle, Clock, AlertCircle, Filter, FileText, Edit3, RefreshCw, Calendar } from 'lucide-react';
 import styles from './InvoiceTable.module.css';
 
 import { InvoiceStatusUpdate } from './InvoiceStatusUpdate';
@@ -14,7 +14,6 @@ interface Invoice {
   status: string;
   createdAt: string;
   dueDate: string;
-  procedureType: string;
 }
 
 const STATUS_CONFIG = {
@@ -33,7 +32,10 @@ export const InvoiceTable: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // --- Filters ---
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterMonth, setFilterMonth] = useState<string>(''); // Format: YYYY-MM
   
   const [selectedInvoiceForStatus, setSelectedInvoiceForStatus] = useState<{id: number, status: string, invoiceNumber: string} | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -85,14 +87,10 @@ export const InvoiceTable: React.FC = () => {
       if (!token) return;
 
       const response = await fetch(`${API_URL}/api/invoices/${invoiceId}/pdf`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to download PDF');
-      }
+      if (!response.ok) throw new Error('Failed to download PDF');
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -122,9 +120,7 @@ export const InvoiceTable: React.FC = () => {
         },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to send email');
-      }
+      if (!response.ok) throw new Error('Failed to send email');
 
       setSuccessMessage('Invoice sent via email successfully!');
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -134,62 +130,62 @@ export const InvoiceTable: React.FC = () => {
     }
   };
 
+  const getStatusColor = (status: string) => STATUS_CONFIG[status as keyof typeof STATUS_CONFIG]?.color || '#6c757d';
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'Draft': 'Draft', 'Sent': 'Sent', 'Pending': 'Pending',
+      'PartiallyPaid': 'Partially Paid', 'Paid': 'Paid',
+      'Overdue': 'Overdue', 'Cancelled': 'Cancelled',
+    };
+    return labels[status] || status;
+  };
+
   const getStatusIcon = (status: string) => {
     const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
-    if (config) {
-      return <span className={styles.statusEmoji}>{config.icon}</span>;
-    }
-    
+    if (config?.icon) return <span className={styles.statusEmoji}>{config.icon}</span>;
     switch (status.toLowerCase()) {
-      case 'paid':
-        return <CheckCircle size={16} className={styles.statusIconPaid} />;
-      case 'sent':
-        return <Clock size={16} className={styles.statusIconSent} />;
-      case 'draft':
-        return <AlertCircle size={16} className={styles.statusIconDraft} />;
-      default:
-        return <AlertCircle size={16} />;
+      case 'paid': return <CheckCircle size={16} className={styles.statusIconPaid} />;
+      case 'sent': return <Clock size={16} className={styles.statusIconSent} />;
+      case 'draft': return <AlertCircle size={16} className={styles.statusIconDraft} />;
+      default: return <AlertCircle size={16} />;
     }
   };
 
   const getStatusClass = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'paid':
-        return styles.statusPaid;
-      case 'sent':
-        return styles.statusSent;
-      case 'draft':
-        return styles.statusDraft;
-      case 'pending':
-        return styles.statusPending;
-      case 'overdue':
-        return styles.statusOverdue;
-      case 'cancelled':
-        return styles.statusCancelled;
-      case 'partiallypaid':
-        return styles.statusPartiallyPaid;
-      default:
-        return '';
+      case 'paid': return styles.statusPaid;
+      case 'sent': return styles.statusSent;
+      case 'draft': return styles.statusDraft;
+      case 'pending': return styles.statusPending;
+      case 'overdue': return styles.statusOverdue;
+      case 'cancelled': return styles.statusCancelled;
+      case 'partiallypaid': return styles.statusPartiallyPaid;
+      default: return '';
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
-    return config?.color || '#6c757d';
-  };
+  // --- NEW: Client-side Month Filtering ---
+  const displayedInvoices = useMemo(() => {
+    let filtered = invoices;
+    
+    // filterMonth is in "YYYY-MM" format. 
+    // createdAt is an ISO string like "2026-08-26T14:30:00Z"
+    if (filterMonth) {
+      filtered = filtered.filter(inv => inv.createdAt.startsWith(filterMonth));
+    }
+    
+    return filtered;
+  }, [invoices, filterMonth]);
 
-  const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      'Draft': 'Draft',
-      'Sent': 'Sent',
-      'Pending': 'Pending',
-      'PartiallyPaid': 'Partially Paid',
-      'Paid': 'Paid',
-      'Overdue': 'Overdue',
-      'Cancelled': 'Cancelled',
-    };
-    return labels[status] || status;
-  };
+  // --- Totals calculate based on what is currently displayed ---
+  const statusTotals = useMemo(() => {
+    return displayedInvoices.reduce((acc, invoice) => {
+      acc[invoice.status] = (acc[invoice.status] || 0) + invoice.total;
+      acc['Total_All'] = (acc['Total_All'] || 0) + invoice.total;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [displayedInvoices]);
 
   if (loading) {
     return (
@@ -223,9 +219,32 @@ export const InvoiceTable: React.FC = () => {
       <div className={styles.tableHeader}>
         <div className={styles.headerLeft}>
           <h2>All Invoices</h2>
-          <span className={styles.invoiceCount}>{invoices.length} invoices</span>
+          <span className={styles.invoiceCount}>{displayedInvoices.length} invoices</span>
         </div>
         <div className={styles.headerRight}>
+          
+          {/* ===== NEW: Month Filter ===== */}
+          <div className={styles.filterWrapper} title="Filter by Month">
+            <Calendar size={16} />
+            <input 
+              type="month" 
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+              className={styles.filterSelect}
+              style={{ padding: '6px 4px', cursor: 'pointer' }}
+            />
+            {filterMonth && (
+              <button 
+                onClick={() => setFilterMonth('')} 
+                style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px', padding: '0 4px', lineHeight: 1 }}
+                title="Clear date filter"
+              >
+                &times;
+              </button>
+            )}
+          </div>
+          {/* ================================ */}
+
           <div className={styles.filterWrapper}>
             <Filter size={16} />
             <select 
@@ -250,11 +269,30 @@ export const InvoiceTable: React.FC = () => {
         </div>
       </div>
 
-      {invoices.length === 0 ? (
+      {displayedInvoices.length > 0 && (
+        <div className={styles.summaryCardsGrid}>
+          {Object.entries(statusTotals)
+            .filter(([key]) => key !== 'Total_All')
+            .map(([status, amount]) => (
+              <div key={status} className={styles.summaryCard} style={{ borderLeftColor: getStatusColor(status) }}>
+                <span className={styles.summaryCardTitle}>{getStatusLabel(status)}</span>
+                <span className={styles.summaryCardAmount}>R {amount.toFixed(2)}</span>
+              </div>
+            ))}
+          <div className={styles.summaryCard} style={{ borderLeftColor: '#334155', backgroundColor: '#f8fafc' }}>
+             <span className={styles.summaryCardTitle}>Total (Current View)</span>
+             <span className={styles.summaryCardAmount} style={{ color: '#0f172a' }}>
+               R {statusTotals['Total_All']?.toFixed(2) || '0.00'}
+             </span>
+          </div>
+        </div>
+      )}
+
+      {displayedInvoices.length === 0 ? (
         <div className={styles.emptyState}>
           <FileText size={48} />
-          <h3>No invoices yet</h3>
-          <p>Create your first invoice by going to the Generate Invoice tab</p>
+          <h3>No invoices found</h3>
+          <p>Try adjusting your date or status filters.</p>
         </div>
       ) : (
         <div className={styles.tableWrapper}>
@@ -263,7 +301,6 @@ export const InvoiceTable: React.FC = () => {
               <tr>
                 <th>Invoice #</th>
                 <th>Client</th>
-                <th>Procedure</th>
                 <th>Date</th>
                 <th>Due Date</th>
                 <th>Amount</th>
@@ -272,7 +309,7 @@ export const InvoiceTable: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {invoices.map((invoice) => {
+              {displayedInvoices.map((invoice) => {
                 const statusColor = getStatusColor(invoice.status);
                 const statusLabel = getStatusLabel(invoice.status);
                 
@@ -285,11 +322,9 @@ export const InvoiceTable: React.FC = () => {
                         <span>{invoice.clientEmail}</span>
                       </div>
                     </td>
-                    <td>{invoice.procedureType}</td>
                     <td>{new Date(invoice.createdAt).toLocaleDateString()}</td>
                     <td>
                       {new Date(invoice.dueDate).toLocaleDateString()}
-                      {/* ===== NEW: Overdue indicator ===== */}
                       {new Date(invoice.dueDate) < new Date() && 
                        invoice.status !== 'Paid' && 
                        invoice.status !== 'Cancelled' && (
@@ -311,7 +346,6 @@ export const InvoiceTable: React.FC = () => {
                     </td>
                     <td>
                       <div className={styles.actions}>
-                        {/* ===== NEW: Status Update Button ===== */}
                         <button 
                           className={styles.actionButton} 
                           title="Change Status"
@@ -360,7 +394,7 @@ export const InvoiceTable: React.FC = () => {
           currentStatus={selectedInvoiceForStatus.status}
           invoiceNumber={selectedInvoiceForStatus.invoiceNumber}
           onStatusUpdated={() => {
-            loadInvoices(); // Refresh the list
+            loadInvoices(); 
             setSuccessMessage('Status updated successfully!');
             setTimeout(() => setSuccessMessage(null), 3000);
           }}
