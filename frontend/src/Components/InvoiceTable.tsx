@@ -1,5 +1,6 @@
 // src/Components/InvoiceTable.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query'; // <-- NEW IMPORTS
 import { Eye, Download, Mail, CheckCircle, Clock, AlertCircle, Filter, FileText, Edit3, RefreshCw, Calendar } from 'lucide-react';
 import styles from './InvoiceTable.module.css';
 
@@ -29,33 +30,31 @@ const STATUS_CONFIG = {
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const InvoiceTable: React.FC = () => {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  // --- Filters ---
+  // --- UI State (Filters and Modals) ---
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterMonth, setFilterMonth] = useState<string>(''); // Format: YYYY-MM
   
   const [selectedInvoiceForStatus, setSelectedInvoiceForStatus] = useState<{id: number, status: string, invoiceNumber: string} | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const queryClient = useQueryClient(); // <-- Gives us access to the cache
+
   const getAuthToken = () => {
     return sessionStorage.getItem('auth_token') || localStorage.getItem('auth_token');
   };
 
-  useEffect(() => {
-    loadInvoices();
-  }, [filterStatus]);
-
-  const loadInvoices = async () => {
-    try {
-      setLoading(true);
+  // --- THE REACT QUERY MAGIC ---
+  const { 
+    data: invoices = [], // Defaults to an empty array
+    isLoading, 
+    isError, 
+    error,
+    refetch 
+  } = useQuery({
+    queryKey: ['invoices', filterStatus], // Creates a unique cache for every status filter
+    queryFn: async () => {
       const token = getAuthToken();
-      if (!token) {
-        setError('Please login to continue');
-        return;
-      }
+      if (!token) throw new Error('Please login to continue');
 
       const url = filterStatus !== 'all' 
         ? `${API_URL}/api/invoices?status=${filterStatus}`
@@ -72,14 +71,9 @@ export const InvoiceTable: React.FC = () => {
         throw new Error('Failed to load invoices');
       }
 
-      const data = await response.json();
-      setInvoices(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load invoices');
-    } finally {
-      setLoading(false);
+      return await response.json() as Invoice[];
     }
-  };
+  });
 
   const handleDownloadPDF = async (invoiceId: number, invoiceNumber: string) => {
     try {
@@ -165,12 +159,10 @@ export const InvoiceTable: React.FC = () => {
     }
   };
 
-  // --- NEW: Client-side Month Filtering ---
+  // --- Client-side Month Filtering ---
   const displayedInvoices = useMemo(() => {
     let filtered = invoices;
     
-    // filterMonth is in "YYYY-MM" format. 
-    // createdAt is an ISO string like "2026-08-26T14:30:00Z"
     if (filterMonth) {
       filtered = filtered.filter(inv => inv.createdAt.startsWith(filterMonth));
     }
@@ -187,7 +179,7 @@ export const InvoiceTable: React.FC = () => {
     }, {} as Record<string, number>);
   }, [displayedInvoices]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.spinner}></div>
@@ -196,12 +188,12 @@ export const InvoiceTable: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div className={styles.errorContainer}>
         <AlertCircle size={24} />
-        <p>{error}</p>
-        <button onClick={loadInvoices}>Retry</button>
+        <p>{error instanceof Error ? error.message : 'Failed to load invoices'}</p>
+        <button onClick={() => refetch()}>Retry</button>
       </div>
     );
   }
@@ -223,7 +215,7 @@ export const InvoiceTable: React.FC = () => {
         </div>
         <div className={styles.headerRight}>
           
-          {/* ===== NEW: Month Filter ===== */}
+          {/* ===== Month Filter ===== */}
           <div className={styles.filterWrapper} title="Filter by Month">
             <Calendar size={16} />
             <input 
@@ -243,7 +235,6 @@ export const InvoiceTable: React.FC = () => {
               </button>
             )}
           </div>
-          {/* ================================ */}
 
           <div className={styles.filterWrapper}>
             <Filter size={16} />
@@ -262,7 +253,7 @@ export const InvoiceTable: React.FC = () => {
               <option value="Cancelled"> Cancelled</option>
             </select>
           </div>
-          <button onClick={loadInvoices} className={styles.refreshButton}>
+          <button onClick={() => refetch()} className={styles.refreshButton}>
             <RefreshCw size={16} />
             Refresh
           </button>
@@ -394,7 +385,8 @@ export const InvoiceTable: React.FC = () => {
           currentStatus={selectedInvoiceForStatus.status}
           invoiceNumber={selectedInvoiceForStatus.invoiceNumber}
           onStatusUpdated={() => {
-            loadInvoices(); 
+            // <-- Invalidate the cache to trigger a background refetch
+            queryClient.invalidateQueries({ queryKey: ['invoices'] }); 
             setSuccessMessage('Status updated successfully!');
             setTimeout(() => setSuccessMessage(null), 3000);
           }}
