@@ -170,11 +170,20 @@ export const InvoiceTable: React.FC = () => {
     return filtered;
   }, [invoices, filterMonth]);
 
-  // --- Totals calculate based on what is currently displayed ---
+ // --- Totals calculate based on what is currently displayed ---
   const statusTotals = useMemo(() => {
     return displayedInvoices.reduce((acc, invoice) => {
+      // Always track the total for the specific status
       acc[invoice.status] = (acc[invoice.status] || 0) + invoice.total;
-      acc['Total_All'] = (acc['Total_All'] || 0) + invoice.total;
+      
+      // Calculate the Total_All by subtracting if Cancelled, adding otherwise
+      const currentTotalAll = acc['Total_All'] || 0;
+      if (invoice.status === 'Cancelled') {
+        acc['Total_All'] = currentTotalAll ;
+      } else {
+        acc['Total_All'] = currentTotalAll + invoice.total;
+      }
+      
       return acc;
     }, {} as Record<string, number>);
   }, [displayedInvoices]);
@@ -263,7 +272,7 @@ export const InvoiceTable: React.FC = () => {
       {displayedInvoices.length > 0 && (
         <div className={styles.summaryCardsGrid}>
           {Object.entries(statusTotals)
-            .filter(([key]) => key !== 'Total_All')
+            .filter(([key]) => key !== 'Total_All' && key !== 'Cancelled' )
             .map(([status, amount]) => (
               <div key={status} className={styles.summaryCard} style={{ borderLeftColor: getStatusColor(status) }}>
                 <span className={styles.summaryCardTitle}>{getStatusLabel(status)}</span>
@@ -362,13 +371,7 @@ export const InvoiceTable: React.FC = () => {
                         >
                           <Mail size={16} />
                         </button>
-                        <button 
-                          className={styles.actionButton} 
-                          title="View"
-                          onClick={() => window.open(`${API_URL}/api/invoices/${invoice.id}/pdf`, '_blank')}
-                        >
-                          <Eye size={16} />
-                        </button>
+                   
                       </div>
                     </td>
                   </tr>
