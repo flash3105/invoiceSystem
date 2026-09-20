@@ -1,6 +1,6 @@
 // src/Components/InvoiceGenerator.tsx
 import React, { useState, useEffect } from 'react';
-import { Send, Download, Mail, Phone, FileText, User, Calendar, DollarSign, Hash, AlertCircle, Plus, X, Trash2 } from 'lucide-react';
+import { Send, Download, Mail, Phone, FileText, User, Calendar, DollarSign, Hash, AlertCircle, Plus, X, Trash2, Save, FolderOpen } from 'lucide-react';
 import styles from './InvoiceGenerator.module.css';
 
 // API base URL
@@ -18,7 +18,7 @@ interface Client {
   isActive: boolean;
 }
 
-// Interface for individual line items (now includes serviceDate)
+// Interface for individual line items (includes serviceDate)
 interface InvoiceItem {
   id: string; // Used for React keys mapping
   serviceDate: string;
@@ -53,6 +53,17 @@ interface InvoiceResponse {
   status: string;
 }
 
+interface DraftInvoiceDto {
+  id: number;
+  clientId: number;
+  clientName: string;
+  dueDate: string;
+  notes: string;
+  total: number;
+  items: any[];
+  createdAt: string;
+}
+
 // Helper function to create an empty line item with today's date as default
 const createEmptyItem = (): InvoiceItem => ({
   id: Date.now().toString() + Math.random().toString(),
@@ -64,7 +75,7 @@ const createEmptyItem = (): InvoiceItem => ({
 });
 
 export const InvoiceGenerator: React.FC = () => {
-  // Initial state without global serviceDate
+  // Form State
   const [formData, setFormData] = useState<InvoiceFormData>({
     clientId: '',
     dueDate: '',
@@ -74,12 +85,20 @@ export const InvoiceGenerator: React.FC = () => {
   
   const [clients, setClients] = useState<Client[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDrafting, setIsDrafting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
   const [showNewClient, setShowNewClient] = useState(false);
   const [isSavingClient, setIsSavingClient] = useState(false);
   const [generatedInvoice, setGeneratedInvoice] = useState<InvoiceResponse | null>(null);
+  
+  // Draft specific state
+  const [activeDraftId, setActiveDraftId] = useState<number | null>(null);
+  const [showDraftsModal, setShowDraftsModal] = useState(false);
+  const [drafts, setDrafts] = useState<DraftInvoiceDto[]>([]);
+  const [isLoadingDrafts, setIsLoadingDrafts] = useState(false);
   
   // Loading states for delivery buttons
   const [emailLoading, setEmailLoading] = useState(false);
@@ -101,7 +120,7 @@ export const InvoiceGenerator: React.FC = () => {
     return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
   };
 
-  // Fetch clients on mount
+  // Fetch clients and notes on mount
   useEffect(() => {
     loadClients();
     loadDefaultNotes();
@@ -120,7 +139,6 @@ export const InvoiceGenerator: React.FC = () => {
       });
       if (response.ok) {
         const profile = await response.json();
-        // If the user has saved default notes, pre-fill the formData!
         if (profile.defaultNotes) {
           setFormData(prev => ({ ...prev, notes: profile.defaultNotes }));
         }
@@ -164,13 +182,142 @@ export const InvoiceGenerator: React.FC = () => {
     }
   };
 
-  // Handles top-level form changes (client, due date, notes)
+  // -------------------------
+  // DRAFT LOGIC
+  // -------------------------
+  const fetchDrafts = async () => {
+    setIsLoadingDrafts(true);
+    setError(null);
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${API_URL}/api/invoices?status=Draft`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Failed to load drafts');
+      const data = await response.json();
+      setDrafts(data);
+    } catch (err) {
+      setError('Failed to fetch drafts');
+    } finally {
+      setIsLoadingDrafts(false);
+    }
+  };
+
+  const openDraftsModal = () => {
+    setShowDraftsModal(true);
+    fetchDrafts();
+  };
+
+  const loadDraftIntoForm = (draft: DraftInvoiceDto) => {
+    setActiveDraftId(draft.id);
+    setFormData({
+      clientId: draft.clientId ? draft.clientId.toString() : '',
+      dueDate: draft.dueDate ? draft.dueDate.split('T')[0] : '',
+      notes: draft.notes || '',
+      items: draft.items.length > 0 ? draft.items.map(item => ({
+        id: item.id?.toString() || Date.now().toString() + Math.random().toString(),
+        serviceDate: item.serviceDate ? item.serviceDate.split('T')[0] : new Date().toISOString().split('T')[0],
+        description: item.description || '',
+        code: item.code || '',
+        quantity: item.quantity || 1,
+        rate: item.rate || 0,
+      })) : [createEmptyItem()]
+    });
+    setShowDraftsModal(false);
+    setSuccess('Draft loaded. You can continue editing.');
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  const handleSaveDraft = async () => {
+    setIsDrafting(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const token = getAuthToken();
+      const draftData = {
+        clientId: formData.clientId ? parseInt(formData.clientId) : null,
+        dueDate: formData.dueDate || null,
+        taxRate: 0,
+        notes: formData.notes || '',
+        items: formData.items.map(item => ({
+          serviceDate: item.serviceDate || new Date().toISOString().split('T')[0],
+          description: item.description || 'Draft Item',
+          code: item.code || '',
+          quantity: item.quantity,
+          rate: item.rate,
+        }))
+      };
+
+      const url = activeDraftId 
+        ? `${API_URL}/api/invoices/draft/${activeDraftId}` 
+        : `${API_URL}/api/invoices/draft`;
+        
+      const method = activeDraftId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(draftData),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to save draft');
+      }
+
+      const savedDraft = await response.json();
+      setActiveDraftId(savedDraft.id);
+      setSuccess('Draft saved successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error saving draft');
+    } finally {
+      setIsDrafting(false);
+    }
+  };
+
+
+  const handleDeleteDraft = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevents the modal row click (loadDraft) from firing
+    
+    if (!window.confirm('Are you sure you want to delete this draft?')) return;
+
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${API_URL}/api/invoices/draft/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) throw new Error('Failed to delete draft');
+
+      // Remove from the modal list
+      setDrafts(prev => prev.filter(draft => draft.id !== id));
+      setSuccess('Draft deleted successfully');
+      setTimeout(() => setSuccess(null), 3000);
+
+      // If the deleted draft is currently loaded in the form, reset the form
+      if (activeDraftId === id) {
+        setActiveDraftId(null);
+        setFormData({ clientId: '', dueDate: '', notes: '', items: [createEmptyItem()] });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error deleting draft');
+    }
+  };
+
+  // -------------------------
+  // FORM HANDLERS
+  // -------------------------
   const handleTopLevelChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Handles changes for specific line items
   const handleItemChange = (id: string, field: keyof InvoiceItem, value: string | number) => {
     setFormData(prev => ({
       ...prev,
@@ -187,7 +334,6 @@ export const InvoiceGenerator: React.FC = () => {
     }));
   };
 
-  // Add a new line item
   const handleAddItem = () => {
     setFormData(prev => ({
       ...prev,
@@ -195,7 +341,6 @@ export const InvoiceGenerator: React.FC = () => {
     }));
   };
 
-  // Remove a line item
   const handleRemoveItem = (id: string) => {
     if (formData.items.length === 1) return; // Prevent removing the last item
     setFormData(prev => ({
@@ -277,7 +422,7 @@ export const InvoiceGenerator: React.FC = () => {
     if (!formData.clientId) { setError('Please select a client'); return; }
     if (!formData.dueDate) { setError('Please select a due date'); return; }
 
-    // Line items validation (checking description, service date, quantity, and rate)
+    // Line items validation
     for (let i = 0; i < formData.items.length; i++) {
       const item = formData.items[i];
       if (!item.serviceDate) { setError(`Please enter a service date for Item ${i + 1}`); return; }
@@ -293,36 +438,42 @@ export const InvoiceGenerator: React.FC = () => {
 
     try {
       const token = getAuthToken();
-      
-      if (!token) {
-        setError('Please login to continue');
-        setIsGenerating(false);
-        return;
+      if (!token) { setError('Please login to continue'); setIsGenerating(false); return; }
+
+      let response;
+
+      if (activeDraftId) {
+        // If finalizing a draft, save updates first, then issue it
+        await handleSaveDraft(); 
+        response = await fetch(`${API_URL}/api/invoices/${activeDraftId}/issue`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } else {
+        // Standard create new invoice flow
+        const invoiceData = {
+          clientId: parseInt(formData.clientId),
+          dueDate: formData.dueDate,
+          taxRate: 0,
+          notes: formData.notes || '',
+          items: formData.items.map(item => ({
+            serviceDate: item.serviceDate,
+            description: item.description,
+            code: item.code || '',
+            quantity: item.quantity,
+            rate: item.rate,
+          }))
+        };
+
+        response = await fetch(`${API_URL}/api/invoices`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(invoiceData),
+        });
       }
-
-      // Map request data with per-item service dates matching backend DTO
-      const invoiceData = {
-        clientId: parseInt(formData.clientId),
-        dueDate: formData.dueDate,
-        taxRate: 0,
-        notes: formData.notes || '',
-        items: formData.items.map(item => ({
-          serviceDate: item.serviceDate,
-          description: item.description,
-          code: item.code || '',
-          quantity: item.quantity,
-          rate: item.rate,
-        }))
-      };
-
-      const response = await fetch(`${API_URL}/api/invoices`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(invoiceData),
-      });
 
       if (!response.ok) {
         const data = await response.json();
@@ -330,11 +481,11 @@ export const InvoiceGenerator: React.FC = () => {
       }
 
       const data = await response.json();
-      
       setGeneratedInvoice(data);
       setSuccess(`Invoice ${data.invoiceNumber} generated successfully! (Total: R${data.total.toFixed(2)})`);
       
       // Reset form
+      setActiveDraftId(null);
       setFormData({
         clientId: '',
         dueDate: '',
@@ -498,10 +649,64 @@ export const InvoiceGenerator: React.FC = () => {
 
   return (
     <div className={styles.generator}>
-      <div className={styles.generatorHeader}>
-        <h2>New Invoice</h2>
-        <p>Fill in the details below to generate an invoice</p>
+      <div className={styles.generatorHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h2>{activeDraftId ? 'Edit Draft Invoice' : 'New Invoice'}</h2>
+          <p>Fill in the details below to generate an invoice</p>
+        </div>
+        <button 
+          onClick={openDraftsModal} 
+          className={styles.loadDraftButton}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'var(--gray-100)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--gray-300)', cursor: 'pointer' }}
+        >
+          <FolderOpen size={16} /> Load Drafts
+        </button>
       </div>
+
+      {/* DRAFTS MODAL */}
+      {showDraftsModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div style={{ background: 'white', padding: '24px', borderRadius: '8px', width: '90%', maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0 }}>Saved Drafts</h3>
+              <button onClick={() => setShowDraftsModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            {isLoadingDrafts ? (
+              <p>Loading drafts...</p>
+            ) : drafts.length === 0 ? (
+              <p style={{ color: 'var(--gray-500)' }}>No drafts found.</p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {drafts.map(draft => (
+                  <li 
+                    key={draft.id} 
+                    onClick={() => loadDraftIntoForm(draft)}
+                    style={{ padding: '12px', border: '1px solid var(--gray-200)', borderRadius: '4px', marginBottom: '8px', cursor: 'pointer', transition: 'var(--transition)' }}
+                    onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+                    onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--gray-200)'}
+                  >
+                    <div style={{ fontWeight: '600' }}>{draft.clientName || 'No Client Selected'}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--gray-500)' }}>Total: R{draft.total.toFixed(2)} | Date: {new Date(draft.createdAt).toLocaleDateString()}</div>
+                    <button 
+                      onClick={(e) => handleDeleteDraft(draft.id, e)}
+                      style={{ 
+                        background: 'none', border: 'none', color: 'var(--danger)', 
+                        cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center' 
+                      }}
+                      title="Delete Draft"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className={styles.errorAlert}>
@@ -673,7 +878,7 @@ export const InvoiceGenerator: React.FC = () => {
           </div>
 
           {/* ======================================= */}
-          {/* 2. LINE ITEMS SECTION (Per-item Date)   */}
+          {/* 2. LINE ITEMS SECTION                   */}
           {/* ======================================= */}
           <div className={styles.formSection}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -787,7 +992,7 @@ export const InvoiceGenerator: React.FC = () => {
           </div>
 
           {/* ======================================= */}
-          {/* 3. ADDITIONAL DETAILS (Due Date & Notes)*/}
+          {/* 3. ADDITIONAL DETAILS                   */}
           {/* ======================================= */}
           <div className={styles.formSection}>
             <h3 className={styles.sectionTitle}>
@@ -823,22 +1028,38 @@ export const InvoiceGenerator: React.FC = () => {
           </div>
         </div>
 
-        {/* Actions */}
-        <div className={styles.actionButtons}>
+        {/* Actions Row */}
+        <div className={styles.actionButtons} style={{ display: 'flex', gap: '16px', marginTop: '24px' }}>
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            className={styles.saveDraftButton}
+            disabled={isDrafting || loading}
+            style={{ 
+              flex: 1, padding: '12px', background: 'white', color: 'var(--primary)', 
+              border: '2px solid var(--primary)', borderRadius: 'var(--radius-sm)', 
+              fontWeight: '600', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', cursor: 'pointer' 
+            }}
+          >
+            {isDrafting ? <span className={styles.spinner}></span> : <Save size={18} />}
+            {activeDraftId ? 'Update Draft' : 'Save as Draft'}
+          </button>
+
           <button
             type="submit"
             className={styles.generateButton}
             disabled={isGenerating || loading}
+            style={{ flex: 2 }}
           >
             {isGenerating ? (
               <>
                 <span className={styles.spinner}></span>
-                Generating...
+                {activeDraftId ? 'Issuing...' : 'Generating...'}
               </>
             ) : (
               <>
                 <FileText size={18} />
-                Generate Invoice
+                {activeDraftId ? 'Issue Final Invoice' : 'Generate Invoice'}
               </>
             )}
           </button>
