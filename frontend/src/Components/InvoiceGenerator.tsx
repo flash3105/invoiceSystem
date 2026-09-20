@@ -228,6 +228,28 @@ export const InvoiceGenerator: React.FC = () => {
     setTimeout(() => setSuccess(null), 3000);
   };
 
+  const handleStartNew = () => {
+    // Optional: Warn them if they have unsaved changes
+    if (activeDraftId && !window.confirm('Discard unsaved changes and start a new invoice?')) {
+      return;
+    }
+
+    // Reset the form state completely
+    setActiveDraftId(null);
+    setFormData({
+      clientId: '',
+      dueDate: '',
+      notes: '', // This will get overwritten by loadDefaultNotes below
+      items: [createEmptyItem()]
+    });
+    setGeneratedInvoice(null);
+    setError(null);
+    setSuccess(null);
+    
+    // Re-apply any default notes saved in the user's profile
+    loadDefaultNotes();
+  };
+
   const handleSaveDraft = async () => {
     setIsDrafting(true);
     setError(null);
@@ -653,6 +675,20 @@ export const InvoiceGenerator: React.FC = () => {
         <div>
           <h2>{activeDraftId ? 'Edit Draft Invoice' : 'New Invoice'}</h2>
           <p>Fill in the details below to generate an invoice</p>
+        </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {activeDraftId && (
+            <button 
+              onClick={handleStartNew}
+              style={{ 
+                display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', 
+                background: 'white', color: 'var(--primary)', borderRadius: 'var(--radius-sm)', 
+                border: '1px solid var(--primary)', cursor: 'pointer', fontWeight: '500' 
+              }}
+            >
+              <Plus size={16} /> Start Fresh
+            </button>
+          )}
         </div>
         <button 
           onClick={openDraftsModal} 
