@@ -334,6 +334,184 @@ public class InvoiceService
         return invoiceNumber;
     }
 
+    public async Task<InvoiceDto> CreateDraftInvoiceAsync(CreateDraftInvoiceRequest request, int userId)
+{
+    var supabase = await SupabaseClientFactory.GetClientAsync();
+    var businessProfile = await _businessProfileService.GetByUserIdAsync(userId);
+    
+    // Calculate totals safely (handling empty items)
+    var subtotal = request.Items.Sum(i => i.Quantity * i.Rate);
+    var taxAmount = subtotal * (request.TaxRate / 100);
+    var total = subtotal + taxAmount;
+
+    var invoice = new Models.Invoice
+    {
+        BusinessProfileId = businessProfile.Id,
+        ClientId = request.ClientId ?? 0, // Handle 0 as 'No Client' in DB, or make DB column nullable
+        InvoiceNumber = null,             // Explicitly null
+        DueDate = request.DueDate ?? DateTime.UtcNow.AddDays(30), 
+        Subtotal = subtotal,
+        TaxRate = request.TaxRate,
+        TaxAmount = taxAmount,
+        Total = total,
+        Currency = businessProfile.Currency ?? "ZAR",
+        Status = "Draft",                 // Hardcoded state
+        Notes = request.Notes,
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow
+    };
+
+    var insertResult = await supabase.From<Models.Invoice>().Insert(invoice);
+    var createdInvoice = insertResult.Models.First();
+
+    // Insert items if any exist
+    if (request.Items.Any())
+    {
+        var invoiceItems = request.Items.Select(item => new Models.InvoiceItem
+        {
+            InvoiceId = createdInvoice.Id,
+            ServiceDate = item.ServiceDate ?? DateTime.UtcNow, // Default to now if not provided
+            Description = item.Description,
+            Code = item.Code,
+            Quantity = item.Quantity,
+            Rate = item.Rate,
+            Total = item.Quantity * item.Rate,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        }).ToList();
+
+        await supabase.From<Models.InvoiceItem>().Insert(invoiceItems);
+    }
+
+    return await GetInvoiceByIdAsync(createdInvoice.Id, userId);
+}
+
+public async Task<InvoiceDto> IssueDraftInvoiceAsync(int id, int userId)
+{
+    var supabase = await SupabaseClientFactory.GetClientAsync();
+    var businessProfile = await _businessProfileService.GetByUserIdAsync(userId);
+
+    var invoiceResult = await supabase.From<Models.Invoice>()
+        .Where(x => x.Id == id && x.BusinessProfileId == businessProfile.Id)
+        .Get();
+
+    var invoice = invoiceResult.Models.FirstOrDefault() 
+        ?? throw new Exception("Invoice not found");
+
+    if (invoice.Status != "Draft")
+        throw new Exception("Only drafts can be issued.");
+
+    // Strict Validations
+    if (invoice.ClientId == 0)
+        throw new Exception("A client must be assigned before issuing.");
+    
+    // Generate official number
+    invoice.InvoiceNumber = await GenerateInvoiceNumberAsync(supabase, businessProfile.Id);
+    invoice.Status = "Sent"; // Or "Pending", depending on your flow
+    invoice.UpdatedAt = DateTime.UtcNow;
+
+    await supabase.From<Models.Invoice>()
+        .Where(x => x.Id == id)
+        .Update(invoice);
+
+    return await GetInvoiceByIdAsync(id, userId);
+}
+
+
+public async Task<InvoiceDto> UpdateDraftInvoiceAsync(int id, CreateDraftInvoiceRequest request, int userId)
+{
+    var supabase = await SupabaseClientFactory.GetClientAsync();
+    var businessProfile = await _businessProfileService.GetByUserIdAsync(userId);
+
+    // 1. Fetch existing invoice to ensure it belongs to the user
+    var invoiceResult = await supabase.From<Models.Invoice>()
+        .Where(x => x.Id == id && x.BusinessProfileId == businessProfile.Id)
+        .Get();
+
+    var existingInvoice = invoiceResult.Models.FirstOrDefault() 
+        ?? throw new Exception("Invoice not found.");
+
+    // 2. Security Check: Only allow updating if it is still a Draft
+    if (existingInvoice.Status != "Draft")
+        throw new Exception("Only draft invoices can be updated. Issued invoices require a credit note.");
+
+    // 3. Calculate new totals
+    var subtotal = request.Items.Sum(i => i.Quantity * i.Rate);
+    var taxAmount = subtotal * (request.TaxRate / 100);
+    var total = subtotal + taxAmount;
+
+    // 4. Update top-level invoice properties
+    existingInvoice.ClientId = request.ClientId ?? 0;
+    existingInvoice.DueDate = request.DueDate ?? DateTime.UtcNow.AddDays(30);
+    existingInvoice.Subtotal = subtotal;
+    existingInvoice.TaxRate = request.TaxRate;
+    existingInvoice.TaxAmount = taxAmount;
+    existingInvoice.Total = total;
+    existingInvoice.Notes = request.Notes;
+    existingInvoice.UpdatedAt = DateTime.UtcNow;
+
+    await supabase.From<Models.Invoice>()
+        .Where(x => x.Id == id)
+        .Update(existingInvoice);
+
+    // 5. Wipe and Replace Line Items (Safest way to handle array updates)
+    await supabase.From<Models.InvoiceItem>()
+        .Where(x => x.InvoiceId == id)
+        .Delete();
+
+    if (request.Items.Any())
+    {
+        var newItems = request.Items.Select(item => new Models.InvoiceItem
+        {
+            InvoiceId = id,
+            ServiceDate = item.ServiceDate ?? DateTime.UtcNow,
+            Description = item.Description,
+            Code = item.Code,
+            Quantity = item.Quantity,
+            Rate = item.Rate,
+            Total = item.Quantity * item.Rate,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        }).ToList();
+
+        await supabase.From<Models.InvoiceItem>().Insert(newItems);
+    }
+
+    // 6. Return the updated complete object
+    var result = await GetInvoiceByIdAsync(id, userId);
+    return result ?? throw new Exception("Failed to retrieve updated draft.");
+}
+
+public async Task<bool> DeleteDraftInvoiceAsync(int id, int userId)
+{
+    var supabase = await SupabaseClientFactory.GetClientAsync();
+    var businessProfile = await _businessProfileService.GetByUserIdAsync(userId);
+
+    // Fetch to verify ownership and status
+    var invoiceResult = await supabase.From<Models.Invoice>()
+        .Where(x => x.Id == id && x.BusinessProfileId == businessProfile.Id)
+        .Get();
+
+    var invoice = invoiceResult.Models.FirstOrDefault();
+    if (invoice == null) return false;
+
+    // Security Check: Never delete finalized invoices
+    if (invoice.Status != "Draft")
+        throw new Exception("Only draft invoices can be deleted.");
+
+    // Delete associated items first to avoid foreign key constraint errors
+    await supabase.From<Models.InvoiceItem>()
+        .Where(x => x.InvoiceId == id)
+        .Delete();
+
+    // Delete the invoice itself
+    await supabase.From<Models.Invoice>()
+        .Where(x => x.Id == id)
+        .Delete();
+
+    return true;
+}
+
     private InvoiceDto MapToDto(Models.Invoice invoice, List<Models.InvoiceItem> items, ClientDto? client)
     {
         return new InvoiceDto

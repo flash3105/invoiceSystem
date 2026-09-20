@@ -193,6 +193,83 @@ public class InvoicesController : ControllerBase
 
         return int.TryParse(userIdClaim, out var userId) ? userId : null;
     }
+
+    [HttpPost("draft")]
+public async Task<IActionResult> CreateDraft([FromBody] CreateDraftInvoiceRequest request)
+{
+    var userId = GetUserId();
+    if (userId == null) return Unauthorized();
+
+    var draft = await _invoiceService.CreateDraftInvoiceAsync(request, userId.Value);
+    return CreatedAtAction(nameof(GetInvoice), new { id = draft.Id }, draft);
+}
+
+[HttpPost("{id}/issue")]
+public async Task<IActionResult> IssueDraft(int id)
+{
+    var userId = GetUserId();
+    if (userId == null) return Unauthorized();
+
+    try
+    {
+        var issuedInvoice = await _invoiceService.IssueDraftInvoiceAsync(id, userId.Value);
+        return Ok(issuedInvoice);
+    }
+    catch (Exception ex)
+    {
+        return BadRequest(new { message = ex.Message });
+    }
+}
+
+[HttpGet("drafts")]
+public async Task<IActionResult> GetDrafts()
+{
+    var userId = GetUserId();
+    if (userId == null) return Unauthorized(new { message = "User not authenticated" });
+
+    // Re-use your existing service method, hardcoding the "Draft" status filter
+    var drafts = await _invoiceService.GetInvoicesAsync(userId.Value, "Draft");
+    return Ok(drafts);
+}
+
+[HttpPut("draft/{id}")]
+public async Task<IActionResult> UpdateDraft(int id, [FromBody] CreateDraftInvoiceRequest request)
+{
+    try
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized(new { message = "User not authenticated" });
+
+        var updatedDraft = await _invoiceService.UpdateDraftInvoiceAsync(id, request, userId.Value);
+        return Ok(updatedDraft);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error updating draft invoice {DraftId}", id);
+        return BadRequest(new { message = ex.Message });
+    }
+}
+
+[HttpDelete("draft/{id}")]
+public async Task<IActionResult> DeleteDraft(int id)
+{
+    try
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized(new { message = "User not authenticated" });
+
+        var success = await _invoiceService.DeleteDraftInvoiceAsync(id, userId.Value);
+        if (!success) return NotFound(new { message = "Draft not found or you do not have permission to delete it." });
+
+        return Ok(new { message = "Draft deleted successfully." });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error deleting draft invoice {DraftId}", id);
+        return BadRequest(new { message = ex.Message });
+    }
+}
+
 }
 
 public class UpdateInvoiceStatusRequest
