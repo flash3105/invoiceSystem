@@ -33,7 +33,7 @@ export const InvoiceTable: React.FC = () => {
   // --- UI State (Filters and Modals) ---
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterMonth, setFilterMonth] = useState<string>(''); // Format: YYYY-MM
-  
+  const [filterName, setFilterName] = useState<string>('');
   const [selectedInvoiceForStatus, setSelectedInvoiceForStatus] = useState<{id: number, status: string, invoiceNumber: string} | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -158,6 +158,11 @@ export const InvoiceTable: React.FC = () => {
       default: return '';
     }
   };
+  // extract unique clients for dropdown 
+  const uniqueClientNames = useMemo(() => {
+    const names = invoices.map(inv => inv.clientName);
+    return [...new Set(names)].sort();
+  },[invoices]);
 
   // --- Client-side Month Filtering ---
   const displayedInvoices = useMemo(() => {
@@ -166,9 +171,13 @@ export const InvoiceTable: React.FC = () => {
     if (filterMonth) {
       filtered = filtered.filter(inv => inv.createdAt.startsWith(filterMonth));
     }
+
+    if(filterName){
+      filtered = filtered.filter(inv => inv.clientName === filterName);
+    }
     
     return filtered;
-  }, [invoices, filterMonth]);
+  }, [invoices, filterMonth, filterName]);
 
  // --- Totals calculate based on what is currently displayed ---
   const statusTotals = useMemo(() => {
@@ -223,6 +232,17 @@ export const InvoiceTable: React.FC = () => {
           <span className={styles.invoiceCount}>{displayedInvoices.length} invoices</span>
         </div>
         <div className={styles.headerRight}>
+          <div className={styles.filterWrapper}>
+            <select
+              value={filterName}
+              onChange={(e) => setFilterName(e.target.value)}
+              className={styles.filterSelect}>
+                <option value="">All Clients</option>
+                {uniqueClientNames.map(name =>(
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+          </div>
           
           {/* ===== Month Filter ===== */}
           <div className={styles.filterWrapper} title="Filter by Month">
